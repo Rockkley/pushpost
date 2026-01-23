@@ -6,7 +6,7 @@ CREATE TABLE messages
     sender_id   UUID      NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     receiver_id UUID      NOT NULL REFERENCES users (id) ON DELETE RESTRICT,
     content     TEXT      NOT NULL,
-    created_at  TIMESTAMP NOT NULL DEFAULT NOW(),
+    created_at  TIMESTAMP NOT NULL,
     read_at     TIMESTAMP,
 
     CONSTRAINT no_self_message CHECK (sender_id != receiver_id

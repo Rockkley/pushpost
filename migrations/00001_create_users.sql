@@ -6,7 +6,7 @@ CREATE TABLE users
     username      VARCHAR(30)  NOT NULL,
     email         VARCHAR(255) NOT NULL,
     password_hash CHAR(60)     NOT NULL,
-    created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
+    created_at    TIMESTAMP    NOT NULL,
     deleted_at    TIMESTAMP,
 
     CONSTRAINT username_length CHECK (char_length(username) >= 3),
