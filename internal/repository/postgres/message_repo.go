@@ -21,11 +21,11 @@ func (r *MessageRepository) Create(ctx context.Context, senderID, receiverID uui
 	query := `
 		INSERT INTO messages (sender_id, receiver_id, content)
 		VALUES ($1,$2,$3)
-		RETURNING id, sender_id, receiver_id, content, created_at, read_at`
+		RETURNING id, sender_id, receiver_id, content, created_at, read_at `
 
 	var msg domain.Message
 	err := r.db.QueryRowContext(ctx, query, senderID, receiverID, content).Scan(
-		&msg.ID,
+		&msg.Id,
 		&msg.SenderID,
 		&msg.ReceiverID,
 		&msg.Content,
@@ -49,7 +49,7 @@ func (r *MessageRepository) FindByUUID(ctx context.Context, id uuid.UUID) (*doma
 	var msg domain.Message
 
 	err := r.db.QueryRowContext(ctx, query, id).Scan(
-		&msg.ID,
+		&msg.Id,
 		&msg.SenderID,
 		&msg.ReceiverID,
 		&msg.Content,

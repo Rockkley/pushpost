@@ -6,7 +6,7 @@ CREATE TABLE relationships
     user_id    UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     friend_id  UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     status     VARCHAR(20) NOT NULL CHECK (status IN ('pending', 'accepted')),
-    created_at TIMESTAMP   NOT NULL,
+    created_at TIMESTAMP   NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP   NOT NULL,
 
     CONSTRAINT unique_relationship UNIQUE (user_id, friend_id),

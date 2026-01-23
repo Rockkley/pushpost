@@ -21,7 +21,7 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
 			INSERT INTO users (id, username, email, password_hash, created_at, deleted_at) 
-			VALUES ($1,$2,$3,$4,$5)`
+			VALUES ($1,$2,$3,$4,$5) RETURNING created_at`
 
 	_, err := r.db.ExecContext(ctx, query,
 		user.Id, user.Username, user.Email, user.PasswordHash, user.CreatedAt)
