@@ -21,8 +21,8 @@ func NewAuthService(userRepo repository.UserRepository) *AuthService {
 func (s *AuthService) Register(ctx context.Context, username, email, password string) (*domain.User, error) {
 
 	validationResults := validator.ValidateRegisterInputs(username, email, password)
-	if len(validationResults.Errors) > 0 {
-		return nil, validationResults.Errors[0]
+	if len(validationResults) > 0 {
+		return nil, validationResults[0]
 	}
 
 	hashedPassword, err := passwordTools.Hash(password)
