@@ -13,9 +13,9 @@ const (
 )
 
 type Message struct {
-	Id         uuid.UUID  `json:"id""`
-	SenderID   int64      `json:"senderID"`
-	ReceiverID int64      `json:"receiverID"`
+	Id         uuid.UUID  `json:"id"`
+	SenderID   uuid.UUID  `json:"senderID"`
+	ReceiverID uuid.UUID  `json:"receiverID"`
 	Content    string     `json:"content"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	ReadAt     *time.Time `json:"readAt,omitempty"`

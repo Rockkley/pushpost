@@ -28,7 +28,7 @@ type RelationshipRepository interface {
 }
 
 type MessageRepository interface {
-	Create(ctx context.Context, senderID, receiverID uuid.UUID, content string) (*domain.Message, error)
+	Create(ctx context.Context, message *domain.Message) (*domain.Message, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*domain.Message, error)
 	GetConversationWithUsers(ctx context.Context, userID, otherUserID uuid.UUID, limit, offset int) ([]*domain.Message, error)
 	MarkAsRead(ctx context.Context, messageID, userID uuid.UUID) error

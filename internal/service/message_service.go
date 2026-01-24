@@ -5,6 +5,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/domain"
 	"github.com/rockkley/pushpost/internal/repository"
+	"time"
 )
 
 type MessageService struct {
@@ -47,6 +48,13 @@ func (s *MessageService) SendMessage(ctx context.Context, senderID, receiverID u
 		return nil, domain.ErrReceiverDeleted
 	}
 
-	return s.messageRepo.Create(ctx, senderID, receiverID, content)
+	msg := &domain.Message{
+		Id:         uuid.New(),
+		SenderID:   senderID,
+		ReceiverID: receiverID,
+		Content:    content,
+		CreatedAt:  time.Now(),
+	}
+	return s.messageRepo.Create(ctx, msg)
 
 }
