@@ -36,7 +36,7 @@ func (e ValidationError) Error() string { return e.Code }
 
 func newError(code, field string) *ValidationError { return &ValidationError{Code: code, Field: field} }
 
-func ValidateRegisterInputs(username, email, password string) []*ValidationError {
+func ValidateRegisterUser(username, email, password string) []*ValidationError {
 	var errs []*ValidationError
 
 	if err := ValidateUsername(username); err != nil {
