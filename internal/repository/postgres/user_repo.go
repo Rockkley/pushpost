@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rockkley/pushpost/internal/domain"
 	"time"
 )
@@ -20,14 +21,17 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
-			INSERT INTO users (id, username, email, password_hash, created_at, deleted_at) 
-			VALUES ($1,$2,$3,$4,$5) RETURNING created_at`
+			INSERT INTO users (id, username, email, password_hash) 
+			VALUES ($1,$2,$3,$4) RETURNING created_at`
 
 	_, err := r.db.ExecContext(ctx, query,
-		user.Id, user.Username, user.Email, user.PasswordHash, user.CreatedAt)
+		user.Id, user.Username, user.Email, user.PasswordHash)
 
-	// TODO error handling
-	return err
+	if err != nil {
+		return r.parsePgError(err)
+	}
+
+	return nil
 }
 
 func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*domain.User, error) {
@@ -152,4 +156,30 @@ func (r *UserRepository) SoftDelete(ctx context.Context, userId uuid.UUID) error
 	if rows == 0 {
 		return domain.ErrUserNotFound
 	}
+	return err
+}
+
+func (r *UserRepository) parsePgError(err error) error {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		if mappedErr := r.mapPgErr(*pgErr); mappedErr != nil {
+			return mappedErr
+		}
+	}
+
+	return fmt.Errorf("database error:%w", err)
+}
+
+func (r *UserRepository) mapPgErr(pgErr pgconn.PgError) error {
+	if pgErr.Code == "23505" {
+		switch pgErr.ConstraintName {
+		case "idx_users_email_unique":
+
+			return &domain.FieldValueAlreadyExistsError{Field: domain.FieldEmail}
+		case "idx_users_username_unique":
+
+			return &domain.FieldValueAlreadyExistsError{Field: domain.FieldUsername}
+		}
+	}
+	return nil
 }

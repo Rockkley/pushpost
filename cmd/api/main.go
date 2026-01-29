@@ -1,13 +1,14 @@
 package main
 
 import (
-	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/rockkley/pushpost/internal/config"
 	"github.com/rockkley/pushpost/internal/database"
-	"github.com/rockkley/pushpost/pkg/password"
-	"github.com/rockkley/pushpost/pkg/validator"
+	myhttp "github.com/rockkley/pushpost/internal/handler/http"
+	"github.com/rockkley/pushpost/internal/repository/postgres"
+	"github.com/rockkley/pushpost/internal/service"
 	"log"
+	"net/http"
 )
 
 func main() {
@@ -30,23 +31,15 @@ func main() {
 
 	defer db.Close()
 
-	fmt.Println("database connected OK")
+	userRepo := postgres.NewUserRepository(db)
+	authService := service.NewAuthService(userRepo)
+	authHandler := myhttp.NewAuthHandler(authService)
 
-	//tests
-	hashed, err := password.Hash("megapassword")
+	mux := myhttp.NewRouter(authHandler)
 
-	if err != nil {
-		log.Fatal("failed password hashing:", err)
+	// HTTP server
+	log.Println("HTTP server is running on", ":8080")
+	if err := http.ListenAndServe(":8080", mux); err != nil {
+		log.Fatal(err)
 	}
-
-	fmt.Println("password hashed OK", hashed)
-
-	email := "rockkley94@gmail.com"
-	if !validator.IsValidEmail(email) {
-		log.Fatal("email is not valid - ", email)
-	}
-
-	fmt.Println("email validation OK")
-	fmt.Println("ALL SYSTEMS WORKS")
-
 }

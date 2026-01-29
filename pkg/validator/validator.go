@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"github.com/rockkley/pushpost/internal/handler/http/dto"
 	"regexp"
 	"strings"
 	"unicode"
@@ -8,18 +9,18 @@ import (
 )
 
 const (
-	ErrUsernameTooShort     = "user.username.too_short"
-	ErrUsernameTooLong      = "user.username.too_long"
-	ErrUsernameInvalidChars = "user.username.invalid_chars"
+	ErrUsernameTooShort     = "username is too short"
+	ErrUsernameTooLong      = "username is too long"
+	ErrUsernameInvalidChars = "username contains invalid characters"
 
-	ErrEmailInvalid  = "user.email.invalid"
-	ErrEmailRequired = "user.email.required"
+	ErrEmailInvalid  = "email is invalid"
+	ErrEmailRequired = "email is required"
 
-	ErrPasswordTooShort = "user.password.too_short"
-	ErrPasswordWeak     = "user.password.weak"
+	ErrPasswordTooShort = "password is too short"
+	ErrPasswordWeak     = "password is too weak"
 
-	ErrContentRequired = "content.required"
-	ErrContentTooLong  = "content.too_long"
+	ErrContentRequired = "content is required"
+	ErrContentTooLong  = "content is too long"
 )
 
 var (
@@ -36,18 +37,18 @@ func (e ValidationError) Error() string { return e.Code }
 
 func newError(code, field string) *ValidationError { return &ValidationError{Code: code, Field: field} }
 
-func ValidateRegisterUser(username, email, password string) []*ValidationError {
+func ValidateRegisterUser(dto dto.RegisterUserDto) []*ValidationError {
 	var errs []*ValidationError
 
-	if err := ValidateUsername(username); err != nil {
+	if err := ValidateUsername(dto.Username); err != nil {
 		errs = append(errs, err)
 	}
 
-	if err := ValidateEmail(email); err != nil {
+	if err := ValidateEmail(dto.Email); err != nil {
 		errs = append(errs, err)
 	}
 
-	if err := ValidatePassword(password); err != nil {
+	if err := ValidatePassword(dto.Password); err != nil {
 		errs = append(errs, err)
 	}
 
@@ -57,9 +58,11 @@ func ValidateRegisterUser(username, email, password string) []*ValidationError {
 
 func ValidateUsername(username string) *ValidationError {
 	length := utf8.RuneCountInString(username)
+
 	if length < 3 {
 		return newError(ErrUsernameTooShort, "username")
 	}
+
 	if length > 30 {
 		return newError(ErrUsernameTooLong, "username")
 	}
@@ -75,12 +78,17 @@ func ValidateEmail(email string) *ValidationError {
 	email = strings.TrimSpace(email)
 
 	if email == "" {
+
 		return newError(ErrEmailRequired, "email")
 	}
+
 	email = strings.ToLower(email)
+
 	if !emailRegex.MatchString(email) {
+
 		return newError(ErrEmailInvalid, "email")
 	}
+
 	return nil
 }
 
@@ -99,13 +107,17 @@ func ValidatePassword(password string) *ValidationError {
 		case unicode.IsLetter(c):
 			hasLetters = true
 		}
+
 		if hasLetters && hasDigits {
+
 			return nil
 		}
 	}
 
 	if !hasLetters || !hasDigits {
+
 		return newError(ErrPasswordWeak, "password")
 	}
+
 	return nil
 }

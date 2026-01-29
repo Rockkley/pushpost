@@ -2,12 +2,13 @@ package service
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/domain"
+	"github.com/rockkley/pushpost/internal/handler/http/dto"
 	"github.com/rockkley/pushpost/internal/repository"
 	passwordTools "github.com/rockkley/pushpost/pkg/password"
-	"github.com/rockkley/pushpost/pkg/validator"
-	"time"
 )
 
 type AuthService struct {
@@ -18,29 +19,32 @@ func NewAuthService(userRepo repository.UserRepository) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 
-func (s *AuthService) Register(ctx context.Context, username, email, password string) (*domain.User, error) {
+func (s *AuthService) Register(ctx context.Context, dto dto.RegisterUserDto) (*domain.User, error) {
 
-	validationResults := validator.ValidateRegisterInputs(username, email, password)
-	if len(validationResults) > 0 {
-		return nil, validationResults[0]
-	}
-
-	hashedPassword, err := passwordTools.Hash(password)
+	hashedPassword, err := passwordTools.Hash(dto.Password)
 	if err != nil {
+
 		return nil, err
 	}
 
 	user := &domain.User{
 		Id:           uuid.New(),
-		Username:     username,
-		Email:        email,
+		Username:     dto.Username,
+		Email:        dto.Email,
 		PasswordHash: hashedPassword,
-		CreatedAt:    time.Now(),
 	}
 
 	err = s.userRepo.Create(ctx, user)
+
+	var de domain.DomainError
+
 	if err != nil {
-		return nil, err
+		if errors.As(err, &de) {
+
+			return nil, err
+		}
+
+		return nil, fmt.Errorf("internal error - %w", err)
 	}
 	return user, nil
 }
