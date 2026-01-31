@@ -5,8 +5,10 @@ import (
 	"github.com/rockkley/pushpost/internal/config"
 	"github.com/rockkley/pushpost/internal/database"
 	myhttp "github.com/rockkley/pushpost/internal/handler/http"
+	"github.com/rockkley/pushpost/internal/repository/memory"
 	"github.com/rockkley/pushpost/internal/repository/postgres"
-	"github.com/rockkley/pushpost/internal/service"
+	"github.com/rockkley/pushpost/internal/service/services"
+	"github.com/rockkley/pushpost/pkg/jwt"
 	"log"
 	"net/http"
 )
@@ -31,11 +33,14 @@ func main() {
 
 	defer db.Close()
 
+	sessionStore := memory.NewSessionStore()
+	jwtManager := jwt.NewManager(cfg.JWTSecret)
 	userRepo := postgres.NewUserRepository(db)
-	authService := service.NewAuthService(userRepo)
+	authService := services.NewAuthService(userRepo, sessionStore, jwtManager)
 	authHandler := myhttp.NewAuthHandler(authService)
 
-	mux := myhttp.NewRouter(authHandler)
+	authMiddleware := myhttp.NewAuthMiddleware(authService)
+	mux := myhttp.NewRouter(authMiddleware, authHandler)
 
 	// HTTP server
 	log.Println("HTTP server is running on", ":8080")

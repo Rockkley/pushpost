@@ -54,7 +54,7 @@ func MakeHandler(h APIFunc) http.HandlerFunc {
 					Field: de.GetField(),
 					Code:  de.Code(),
 				})
-			} else {
+				log.Errorf("internal error: %v, path: %s", err, r.URL.Path)
 				WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error"})
 			}
 			log.Errorf("HTTP API error: %v, path: %s", err, r.URL.Path)
@@ -64,8 +64,8 @@ func MakeHandler(h APIFunc) http.HandlerFunc {
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {
-	w.WriteHeader(status)
 	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
 	return json.NewEncoder(w).Encode(v)
 
 }

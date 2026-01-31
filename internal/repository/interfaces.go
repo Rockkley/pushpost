@@ -36,3 +36,9 @@ type MessageRepository interface {
 	GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
 	GetUnreadMessages(ctx context.Context, userID uuid.UUID) ([]*domain.Message, error)
 }
+
+type SessionStore interface {
+	Save(ctx context.Context, session *domain.Session) error
+	Get(ctx context.Context, sessionID string) (*domain.Session, error)
+	Delete(ctx context.Context, sessionID string) error
+}

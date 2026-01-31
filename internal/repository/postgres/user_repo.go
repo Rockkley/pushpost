@@ -65,10 +65,10 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 	var user domain.User
 
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
-		&user.Id, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
+		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrUserNotFound
+		return nil, &domain.InvalidCredentialsError{}
 	}
 
 	if err != nil {

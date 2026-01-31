@@ -9,7 +9,7 @@ import (
 )
 
 type AuthHandler struct {
-	authService *service.AuthService
+	authService service.AuthService
 }
 
 type ErrorResponse struct {
@@ -17,7 +17,7 @@ type ErrorResponse struct {
 	Code  string `json:"code"`
 }
 
-func NewAuthHandler(authService *service.AuthService) *AuthHandler {
+func NewAuthHandler(authService service.AuthService) *AuthHandler {
 	return &AuthHandler{authService: authService}
 }
 
@@ -46,4 +46,25 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 
 	return WriteJSON(w, http.StatusCreated, user)
 
+}
+
+func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
+	var req dto.LoginUserDTO
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+
+		return InvalidJSON()
+	}
+
+	if req.DeviceID == "" {
+		req.DeviceID = "web-browser"
+	}
+
+	token, err := h.authService.Login(r.Context(), req)
+
+	if err != nil {
+		return WriteJSON(w, http.StatusUnauthorized, err.Error())
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	return nil
 }
