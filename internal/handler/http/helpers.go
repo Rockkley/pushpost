@@ -50,16 +50,16 @@ func MakeHandler(h APIFunc) http.HandlerFunc {
 			}
 			var de domain.DomainError
 			if errors.As(err, &de) {
-				WriteJSON(w, de.HTTPStatus(), ErrorResponse{
+				WriteJSON(w, de.GetHTTPStatus(), ErrorResponse{
 					Field: de.GetField(),
-					Code:  de.Code(),
+					Code:  de.GetCode(),
 				})
-				log.Errorf("internal error: %v, path: %s", err, r.URL.Path)
-				WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error"})
+				return
 			}
+			WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: "internal_error"})
 			log.Errorf("HTTP API error: %v, path: %s", err, r.URL.Path)
-
 		}
+
 	}
 }
 

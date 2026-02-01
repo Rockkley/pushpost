@@ -43,8 +43,8 @@ func main() {
 	mux := myhttp.NewRouter(authMiddleware, authHandler)
 
 	// HTTP server
-	log.Println("HTTP server is running on", ":8080")
-	if err := http.ListenAndServe(":8080", mux); err != nil {
+	log.Println("HTTP server is running on", cfg.Port)
+	if err := http.ListenAndServe(cfg.Port, mux); err != nil {
 		log.Fatal(err)
 	}
 }

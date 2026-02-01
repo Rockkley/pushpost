@@ -29,13 +29,13 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		tokenStr, err := extractBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusUnauthorized)
+			WriteJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized"})
 			return
 		}
 
 		session, err := m.authService.AuthenticateRequest(r.Context(), tokenStr)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			WriteJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized"})
 			return
 		}
 		ctx := context.WithValue(r.Context(), ctxUserIDKey, session.UserID)

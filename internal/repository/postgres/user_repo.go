@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/rockkley/pushpost/internal/domain"
+	"strings"
 	"time"
 )
 
@@ -22,10 +23,10 @@ func NewUserRepository(db *sql.DB) *UserRepository {
 func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 	query := `
 			INSERT INTO users (id, username, email, password_hash) 
-			VALUES ($1,$2,$3,$4) RETURNING created_at`
+			VALUES ($1,$2,$3,$4) RETURNING created_at, updated_at`
 
-	_, err := r.db.ExecContext(ctx, query,
-		user.Id, user.Username, user.Email, user.PasswordHash)
+	err := r.db.QueryRowContext(ctx, query,
+		user.Id, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		return r.parsePgError(err)
@@ -43,7 +44,7 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*domai
 	var user domain.User
 
 	err := r.db.QueryRowContext(ctx, query, userId).Scan(
-		&user.Id, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
+		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, domain.ErrUserNotFound
@@ -57,10 +58,11 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*domai
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain.User, error) {
+	email = strings.ToLower(strings.TrimSpace(email))
 	query := `
 			SELECT id, username, email, password_hash, created_at, deleted_at
 			FROM users
-			WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL`
+			WHERE email = $1 AND deleted_at IS NULL`
 
 	var user domain.User
 
@@ -150,7 +152,7 @@ func (r *UserRepository) SoftDelete(ctx context.Context, userId uuid.UUID) error
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("faied to get rows affected")
+		return fmt.Errorf("failed to get rows affected")
 	}
 
 	if rows == 0 {

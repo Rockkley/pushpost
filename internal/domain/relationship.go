@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -13,9 +14,9 @@ const (
 )
 
 type Relationship struct {
-	ID        int64
-	UserID    int64
-	FriendID  int64
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	FriendID  uuid.UUID
 	Status    RelationshipStatus
 	CreatedAt time.Time
 	UpdatedAt time.Time

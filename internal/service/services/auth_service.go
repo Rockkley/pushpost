@@ -116,7 +116,20 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, tokenStr string) 
 		return nil, errors.New("token missing session ID")
 	}
 
-	return s.GetSession(ctx, sessionID)
+	session, err := s.GetSession(ctx, sessionID)
+	if err != nil {
+		return nil, err
+	}
+
+	if time.Now().Unix() > session.Expires {
+		if err = s.sessionStore.Delete(ctx, sessionID); err != nil {
+			return nil, errors.New(fmt.Sprintf("failed to delete session: %s", err))
+		}
+
+		return nil, errors.New("session expired")
+	}
+
+	return session, nil
 }
 
 //func (s *AuthService) extractTokenClaims() todo?
