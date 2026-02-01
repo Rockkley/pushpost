@@ -81,10 +81,11 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*domain.User, error) {
+	username = strings.ToLower(strings.TrimSpace(username))
 	query := `
 			SELECT id, username, email, password_hash, created_at, deleted_at
 			FROM users
-			WHERE LOWER(username) = LOWER($1) AND deleted_at IS NULL`
+			WHERE username = $1 AND deleted_at IS NULL`
 
 	var user domain.User
 

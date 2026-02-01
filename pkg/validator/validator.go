@@ -9,6 +9,10 @@ import (
 )
 
 const (
+	MinPasswordLength = 8
+	MaxPasswordLength = 128
+)
+const (
 	ErrUsernameTooShort     = "username is too short"
 	ErrUsernameTooLong      = "username is too long"
 	ErrUsernameInvalidChars = "username contains invalid characters"
@@ -16,6 +20,7 @@ const (
 	ErrEmailInvalid  = "email is invalid"
 	ErrEmailRequired = "email is required"
 
+	ErrPasswordTooLong  = "password is too long"
 	ErrPasswordTooShort = "password is too short"
 	ErrPasswordWeak     = "password is too weak"
 
@@ -94,8 +99,13 @@ func ValidateEmail(email string) *ValidationError {
 
 func ValidatePassword(password string) *ValidationError {
 
-	if utf8.RuneCountInString(password) < 8 {
+	length := utf8.RuneCountInString(password)
+	if length < MinPasswordLength {
 		return newError(ErrPasswordTooShort, "password")
+	}
+
+	if length > MaxPasswordLength {
+		return newError(ErrPasswordTooLong, "password")
 	}
 
 	var hasLetters, hasDigits bool

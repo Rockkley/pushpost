@@ -65,6 +65,6 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return WriteJSON(w, http.StatusUnauthorized, err.Error())
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]string{"token": token})
-	return nil
+	return WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+
 }

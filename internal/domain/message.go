@@ -13,12 +13,12 @@ const (
 )
 
 type Message struct {
-	Id         uuid.UUID  `json:"id"`
-	SenderID   uuid.UUID  `json:"senderID"`
-	ReceiverID uuid.UUID  `json:"receiverID"`
-	Content    string     `json:"content"`
-	CreatedAt  time.Time  `json:"createdAt"`
-	ReadAt     *time.Time `json:"readAt,omitempty"`
+	Id         uuid.UUID
+	SenderID   uuid.UUID
+	ReceiverID uuid.UUID
+	Content    string
+	CreatedAt  time.Time
+	ReadAt     *time.Time
 }
 
 func (m *Message) IsRead() bool {
