@@ -3,6 +3,7 @@ package memory
 import (
 	"context"
 	"errors"
+	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/domain"
 	"sync"
 )
@@ -11,12 +12,12 @@ var ErrSessionNotFound = errors.New("session not found")
 
 type SessionStore struct {
 	mu   sync.RWMutex
-	data map[string]*domain.Session
+	data map[uuid.UUID]*domain.Session
 }
 
 func NewSessionStore() *SessionStore {
 	return &SessionStore{
-		data: make(map[string]*domain.Session),
+		data: make(map[uuid.UUID]*domain.Session),
 	}
 }
 
@@ -27,7 +28,7 @@ func (s *SessionStore) Save(ctx context.Context, session *domain.Session) error 
 	return nil
 }
 
-func (s *SessionStore) Get(ctx context.Context, sessionID string) (*domain.Session, error) {
+func (s *SessionStore) Get(ctx context.Context, sessionID uuid.UUID) (*domain.Session, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -39,7 +40,7 @@ func (s *SessionStore) Get(ctx context.Context, sessionID string) (*domain.Sessi
 	return session, nil
 }
 
-func (s *SessionStore) Delete(ctx context.Context, sessionID string) error {
+func (s *SessionStore) Delete(ctx context.Context, sessionID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 

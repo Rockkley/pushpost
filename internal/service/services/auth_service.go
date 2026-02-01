@@ -74,10 +74,10 @@ func (s *AuthService) Login(ctx context.Context, dto dto.LoginUserDTO) (string, 
 		return "", errors.New("invalid password")
 	}
 
-	sessionID := uuid.NewString()
+	sessionID := uuid.New()
 	session := &domain.Session{
 		SessionID: sessionID,
-		UserID:    user.Id.String(),
+		UserID:    user.Id,
 		DeviceID:  dto.DeviceID,
 		Expires:   time.Now().Add(24 * time.Hour).Unix(),
 	}
@@ -86,7 +86,7 @@ func (s *AuthService) Login(ctx context.Context, dto dto.LoginUserDTO) (string, 
 		return "", err
 	}
 
-	token, err := s.jwtManager.Generate(user.Id.String(), dto.DeviceID, sessionID)
+	token, err := s.jwtManager.Generate(user.Id, dto.DeviceID, sessionID)
 	if err != nil {
 		return "", err
 	}

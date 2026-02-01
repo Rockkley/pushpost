@@ -3,6 +3,7 @@ package jwt
 import (
 	"errors"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"time"
 )
 
@@ -14,7 +15,7 @@ func NewManager(secret string) *Manager {
 	return &Manager{secret: []byte(secret)}
 }
 
-func (m *Manager) Generate(userID, deviceID, sessionID string) (string, error) {
+func (m *Manager) Generate(userID, deviceID, sessionID uuid.UUID) (string, error) {
 	claims := jwt.MapClaims{
 		"sub": userID,
 		"did": deviceID,
