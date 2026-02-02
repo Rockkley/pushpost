@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/rockkley/pushpost/internal/config"
 	"github.com/rockkley/pushpost/internal/database"
@@ -45,7 +46,7 @@ func main() {
 
 	// HTTP server
 	log.Println("HTTP server is running on", cfg.Port)
-	if err := http.ListenAndServe(cfg.Port, mux); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf("localhost:%s", cfg.Port), mux); err != nil {
 		log.Fatal(err)
 	}
 }

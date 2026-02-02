@@ -3,7 +3,8 @@ package middleware
 import (
 	"context"
 	"errors"
-	http2 "github.com/rockkley/pushpost/internal/handler/http"
+	"github.com/rockkley/pushpost/internal/apperror"
+	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/internal/service"
 	"net/http"
 	"strings"
@@ -30,13 +31,13 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		tokenStr, err := extractBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
-			http2.WriteJSON(w, http.StatusUnauthorized, http2.ErrorResponse{Code: "unauthorized"})
+			writeError(w, apperror.Unauthorized(apperror.CodeUnauthorized, "missing authorization header"))
 			return
 		}
 
 		session, err := m.authService.AuthenticateRequest(r.Context(), tokenStr)
 		if err != nil {
-			http2.WriteJSON(w, http.StatusUnauthorized, http2.ErrorResponse{Code: "unauthorized"})
+			writeError(w, err)
 			return
 		}
 		ctx := context.WithValue(r.Context(), ctxUserIDKey, session.UserID)
@@ -68,4 +69,20 @@ func extractBearerToken(header string) (string, error) {
 	}
 
 	return token, nil
+}
+
+func writeError(w http.ResponseWriter, err error) {
+	if appErr, ok := err.(apperror.AppError); ok {
+		response := httperror.ErrorResponse{
+			Code:  appErr.Code(),
+			Field: appErr.Field(),
+		}
+		if fieldErrors, ok := appErr.(interface{ Fields() map[string]string }); ok {
+			response.Fields = fieldErrors.Fields()
+		}
+		_ = httperror.WriteJSON(w, appErr.HTTPStatus(), response)
+		return
+	}
+
+	_ = httperror.WriteJSON(w, http.StatusInternalServerError, httperror.ErrorResponse{Code: apperror.CodeInternalError})
 }

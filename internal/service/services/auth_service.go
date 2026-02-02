@@ -2,14 +2,14 @@ package services
 
 import (
 	"context"
-	"errors"
-	"fmt"
 	"github.com/google/uuid"
+	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/domain"
 	"github.com/rockkley/pushpost/internal/handler/http/dto"
 	"github.com/rockkley/pushpost/internal/repository"
 	"github.com/rockkley/pushpost/pkg/jwt"
 	passwordTools "github.com/rockkley/pushpost/pkg/password"
+	"log/slog"
 	"time"
 )
 
@@ -34,7 +34,7 @@ func (s *AuthService) Register(ctx context.Context, dto dto.RegisterUserDto) (*d
 	hashedPassword, err := passwordTools.Hash(dto.Password)
 	if err != nil {
 
-		return nil, err
+		return nil, apperror.Internal("failed to hash password", err)
 	}
 
 	user := &domain.User{
@@ -46,15 +46,8 @@ func (s *AuthService) Register(ctx context.Context, dto dto.RegisterUserDto) (*d
 
 	err = s.userRepo.Create(ctx, user)
 
-	var de domain.DomainError
-
 	if err != nil {
-		if errors.As(err, &de) {
-
-			return nil, err
-		}
-
-		return nil, fmt.Errorf("internal error - %w", err)
+		return nil, err
 	}
 
 	return user, nil
@@ -67,38 +60,42 @@ func (s *AuthService) Login(ctx context.Context, dto dto.LoginUserDTO) (string, 
 	}
 
 	if user.IsDeleted() {
-		return "", errors.New("account is deleted")
+		return "", apperror.AccountDeleted()
 	}
 
-	if err = passwordTools.Compare(user.PasswordHash, dto.Password); err != nil {
-		return "", errors.New("invalid password")
+	if err = passwordTools.Compare(dto.Password, user.PasswordHash); err != nil {
+		return "", apperror.InvalidCredentials()
 	}
 
+	deviceID := dto.DeviceID
+	if deviceID == uuid.Nil {
+		deviceID = uuid.New()
+	}
 	sessionID := uuid.New()
 	session := &domain.Session{
 		SessionID: sessionID,
 		UserID:    user.Id,
-		DeviceID:  dto.DeviceID,
+		DeviceID:  deviceID,
 		Expires:   time.Now().Add(24 * time.Hour).Unix(),
 	}
 
 	if err = s.sessionStore.Save(ctx, session); err != nil {
-		return "", err
+		return "", apperror.Internal("failed to create session", err)
 	}
 
 	token, err := s.jwtManager.Generate(user.Id, dto.DeviceID, sessionID)
 	if err != nil {
-		return "", err
+		return "", apperror.Internal("failed to generate token", err)
 	}
 
 	return token, nil
 }
 
-func (s *AuthService) Logout(ctx context.Context, sessionID string) error {
+func (s *AuthService) Logout(ctx context.Context, sessionID uuid.UUID) error {
 	return s.sessionStore.Delete(ctx, sessionID)
 }
 
-func (s *AuthService) GetSession(ctx context.Context, sessionID string) (*domain.Session, error) {
+func (s *AuthService) GetSession(ctx context.Context, sessionID uuid.UUID) (*domain.Session, error) {
 	session, err := s.sessionStore.Get(ctx, sessionID)
 	if err != nil {
 		return nil, err
@@ -109,24 +106,26 @@ func (s *AuthService) GetSession(ctx context.Context, sessionID string) (*domain
 func (s *AuthService) AuthenticateRequest(ctx context.Context, tokenStr string) (*domain.Session, error) {
 	claims, err := s.jwtManager.Parse(tokenStr)
 	if err != nil {
-		return nil, fmt.Errorf("invalid token signature: %w", err)
+		slog.Debug("invalid token signature", slog.Any("error", err))
+		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid token signature")
 	}
-	sessionID, ok := claims["sid"].(string)
+
+	sessionID, ok := claims["sid"].(uuid.UUID)
 	if !ok {
-		return nil, errors.New("token missing session ID")
+		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "token missing session id")
 	}
 
 	session, err := s.GetSession(ctx, sessionID)
 	if err != nil {
-		return nil, err
+		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "session not found")
 	}
 
 	if time.Now().Unix() > session.Expires {
 		if err = s.sessionStore.Delete(ctx, sessionID); err != nil {
-			return nil, errors.New(fmt.Sprintf("failed to delete session: %s", err))
+			return nil, apperror.Internal("failed to delete session", err)
 		}
 
-		return nil, errors.New("session expired")
+		return nil, apperror.SessionExpired()
 	}
 
 	return session, nil

@@ -2,7 +2,9 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/handler/http/dto"
+	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/internal/service"
 	"github.com/rockkley/pushpost/pkg/validator"
 	"net/http"
@@ -10,11 +12,6 @@ import (
 
 type AuthHandler struct {
 	authService service.AuthService
-}
-
-type ErrorResponse struct {
-	Field string `json:"field"`
-	Code  string `json:"code"`
 }
 
 func NewAuthHandler(authService service.AuthService) *AuthHandler {
@@ -25,17 +22,17 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	var req dto.RegisterUserDto
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		return InvalidJSON()
+		return apperror.BadRequest(apperror.CodeValidationFailed, "invalid JSON")
 	}
 
 	validationErrors := validator.ValidateRegisterUser(req)
 
 	if len(validationErrors) > 0 {
 		errMap := make(map[string]string)
-		for _, e := range validationErrors {
-			errMap[e.Field] = e.Code
+		for _, err := range validationErrors {
+			errMap[err.Field] = err.Code
 		}
-		return InvalidRequestData(errMap)
+		return apperror.ValidationFields(errMap)
 	}
 
 	user, err := h.authService.Register(r.Context(), req)
@@ -44,7 +41,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	return WriteJSON(w, http.StatusCreated, user)
+	return httperror.WriteJSON(w, http.StatusCreated, user)
 
 }
 
@@ -52,19 +49,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req dto.LoginUserDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 
-		return InvalidJSON()
-	}
-
-	if req.DeviceID == "" {
-		req.DeviceID = "web-browser"
+		return apperror.BadRequest(apperror.CodeValidationFailed, "invalid JSON")
 	}
 
 	token, err := h.authService.Login(r.Context(), req)
 
 	if err != nil {
-		return WriteJSON(w, http.StatusUnauthorized, err.Error())
+		return err
 	}
 
-	return WriteJSON(w, http.StatusOK, map[string]string{"token": token})
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 
 }

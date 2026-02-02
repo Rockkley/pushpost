@@ -4,9 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/domain"
 	"strings"
 	"time"
@@ -29,7 +28,7 @@ func (r *UserRepository) Create(ctx context.Context, user *domain.User) error {
 		user.Id, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		return r.parsePgError(err)
+		return apperror.MapPostgresError(err, "create user")
 	}
 
 	return nil
@@ -46,12 +45,11 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*domai
 	err := r.db.QueryRowContext(ctx, query, userId).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrUserNotFound
-	}
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user by id: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.UserNotFound()
+		}
+		return nil, apperror.MapPostgresError(err, "find user by id")
 	}
 
 	return &user, err
@@ -69,12 +67,11 @@ func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*domain
 	err := r.db.QueryRowContext(ctx, query, email).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, &domain.InvalidCredentialsError{}
-	}
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user by email: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.InvalidCredentials()
+		}
+		return nil, apperror.MapPostgresError(err, "find user by email")
 	}
 
 	return &user, err
@@ -92,12 +89,11 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	err := r.db.QueryRowContext(ctx, query, username).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, domain.ErrUserNotFound
-	}
-
 	if err != nil {
-		return nil, fmt.Errorf("failed to find user by username: %w", err)
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.UserNotFound()
+		}
+		return nil, apperror.MapPostgresError(err, "find user by username")
 	}
 
 	return &user, err
@@ -115,7 +111,7 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("failed to check email exists:%w", err)
+		return false, apperror.MapPostgresError(err, "check email exists")
 	}
 
 	return exists, nil
@@ -133,7 +129,7 @@ func (r *UserRepository) UsernameExists(ctx context.Context, username string) (b
 	err := r.db.QueryRowContext(ctx, query, username).Scan(&exists)
 
 	if err != nil {
-		return false, fmt.Errorf("failed to check username exists:%w", err)
+		return false, apperror.MapPostgresError(err, "check username exists")
 	}
 
 	return exists, nil
@@ -148,41 +144,16 @@ func (r *UserRepository) SoftDelete(ctx context.Context, userId uuid.UUID) error
 	result, err := r.db.ExecContext(ctx, query, time.Now(), userId)
 
 	if err != nil {
-		return fmt.Errorf("failed to soft delete user: %w", err)
+		return apperror.MapPostgresError(err, "soft delete user")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("failed to get rows affected")
+		return apperror.Database("failed to get rows affected", err)
 	}
 
 	if rows == 0 {
-		return domain.ErrUserNotFound
+		return apperror.UserNotFound()
 	}
 	return err
-}
-
-func (r *UserRepository) parsePgError(err error) error {
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) {
-		if mappedErr := r.mapPgErr(*pgErr); mappedErr != nil {
-			return mappedErr
-		}
-	}
-
-	return fmt.Errorf("database error:%w", err)
-}
-
-func (r *UserRepository) mapPgErr(pgErr pgconn.PgError) error {
-	if pgErr.Code == "23505" {
-		switch pgErr.ConstraintName {
-		case "idx_users_email_unique":
-
-			return &domain.FieldValueAlreadyExistsError{Field: domain.FieldEmail}
-		case "idx_users_username_unique":
-
-			return &domain.FieldValueAlreadyExistsError{Field: domain.FieldUsername}
-		}
-	}
-	return nil
 }

@@ -13,19 +13,19 @@ const (
 	MaxPasswordLength = 128
 )
 const (
-	ErrUsernameTooShort     = "username is too short"
-	ErrUsernameTooLong      = "username is too long"
-	ErrUsernameInvalidChars = "username contains invalid characters"
+	ErrUsernameTooShort     = "field_too_short"
+	ErrUsernameTooLong      = "field_too_long"
+	ErrUsernameInvalidChars = "field_invalid"
 
-	ErrEmailInvalid  = "email is invalid"
-	ErrEmailRequired = "email is required"
+	ErrEmailInvalid  = "field_invalid"
+	ErrEmailRequired = "field_required"
 
-	ErrPasswordTooLong  = "password is too long"
-	ErrPasswordTooShort = "password is too short"
-	ErrPasswordWeak     = "password is too weak"
+	ErrPasswordTooLong  = "field_too_long"
+	ErrPasswordTooShort = "field_too_short"
+	ErrPasswordWeak     = "field_weak"
 
-	ErrContentRequired = "content is required"
-	ErrContentTooLong  = "content is too long"
+	ErrContentRequired = "field_required"
+	ErrContentTooLong  = "field_too_long"
 )
 
 var (

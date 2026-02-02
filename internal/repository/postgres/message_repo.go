@@ -68,3 +68,28 @@ func (r *MessageRepository) FindByUUID(ctx context.Context, id uuid.UUID) (*doma
 
 	return &msg, nil
 }
+
+func (r *MessageRepository) GetConversationWithUsers(ctx context.Context, userID, otherUserID uuid.UUID, limit, offset int) ([]*domain.Message, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *MessageRepository) MarkAsRead(ctx context.Context, messageID, userID uuid.UUID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *MessageRepository) MarkAllAsRead(ctx context.Context, senderID, receiverID uuid.UUID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *MessageRepository) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (r *MessageRepository) GetUnreadMessages(ctx context.Context, userID uuid.UUID) ([]*domain.Message, error) {
+	//TODO implement me
+	panic("implement me")
+}
