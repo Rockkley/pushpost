@@ -1,8 +1,9 @@
-package http
+package middleware
 
 import (
 	"context"
 	"errors"
+	http2 "github.com/rockkley/pushpost/internal/handler/http"
 	"github.com/rockkley/pushpost/internal/service"
 	"net/http"
 	"strings"
@@ -29,13 +30,13 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		tokenStr, err := extractBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
-			WriteJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized"})
+			http2.WriteJSON(w, http.StatusUnauthorized, http2.ErrorResponse{Code: "unauthorized"})
 			return
 		}
 
 		session, err := m.authService.AuthenticateRequest(r.Context(), tokenStr)
 		if err != nil {
-			WriteJSON(w, http.StatusUnauthorized, ErrorResponse{Code: "unauthorized"})
+			http2.WriteJSON(w, http.StatusUnauthorized, http2.ErrorResponse{Code: "unauthorized"})
 			return
 		}
 		ctx := context.WithValue(r.Context(), ctxUserIDKey, session.UserID)

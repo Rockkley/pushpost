@@ -5,6 +5,7 @@ import (
 	"github.com/rockkley/pushpost/internal/config"
 	"github.com/rockkley/pushpost/internal/database"
 	myhttp "github.com/rockkley/pushpost/internal/handler/http"
+	"github.com/rockkley/pushpost/internal/handler/http/middleware"
 	"github.com/rockkley/pushpost/internal/repository/memory"
 	"github.com/rockkley/pushpost/internal/repository/postgres"
 	"github.com/rockkley/pushpost/internal/service/services"
@@ -39,7 +40,7 @@ func main() {
 	authService := services.NewAuthService(userRepo, sessionStore, jwtManager)
 	authHandler := myhttp.NewAuthHandler(authService)
 
-	authMiddleware := myhttp.NewAuthMiddleware(authService)
+	authMiddleware := middleware.NewAuthMiddleware(authService)
 	mux := myhttp.NewRouter(authMiddleware, authHandler)
 
 	// HTTP server
