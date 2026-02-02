@@ -39,6 +39,6 @@ type MessageRepository interface {
 
 type SessionStore interface {
 	Save(ctx context.Context, session *domain.Session) error
-	Get(ctx context.Context, sessionID string) (*domain.Session, error)
-	Delete(ctx context.Context, sessionID string) error
+	Get(ctx context.Context, sessionID uuid.UUID) (*domain.Session, error)
+	Delete(ctx context.Context, sessionID uuid.UUID) error
 }
