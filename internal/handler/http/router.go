@@ -23,6 +23,7 @@ func NewRouter(authMW *myMW.AuthMiddleware, authHandler *AuthHandler) *chi.Mux {
 
 	r.Route("/api/user", func(r chi.Router) {
 		r.Use(authMW.RequireAuth)
+		r.Post("/logout", MakeHandler(authHandler.Logout))
 	})
 	return r
 }

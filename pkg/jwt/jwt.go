@@ -17,9 +17,9 @@ func NewManager(secret string) *Manager {
 
 func (m *Manager) Generate(userID, deviceID, sessionID uuid.UUID) (string, error) {
 	claims := jwt.MapClaims{
-		"sub": userID,
-		"did": deviceID,
-		"sid": sessionID,
+		"sub": userID.String(),    // ✅ Конвертируем UUID в строку
+		"did": deviceID.String(),  // ✅ Конвертируем UUID в строку
+		"sid": sessionID.String(), // ✅ Конвертируем UUID в строку
 		"exp": time.Now().Add(24 * time.Hour).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
@@ -41,7 +41,6 @@ func (m *Manager) Parse(tokenStr string) (jwt.MapClaims, error) {
 	claims, ok := token.Claims.(jwt.MapClaims)
 
 	if !ok {
-
 		return nil, errors.New("invalid claims")
 	}
 

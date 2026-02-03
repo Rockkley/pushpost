@@ -92,7 +92,23 @@ func (s *AuthService) Login(ctx context.Context, dto dto.LoginUserDTO) (string, 
 }
 
 func (s *AuthService) Logout(ctx context.Context, sessionID uuid.UUID) error {
-	return s.sessionStore.Delete(ctx, sessionID)
+	session, err := s.sessionStore.Get(ctx, sessionID)
+	if err != nil {
+		slog.Debug("session not found during logout")
+		slog.String("session_id", sessionID.String())
+		return nil
+	}
+
+	if err = s.sessionStore.Delete(ctx, sessionID); err != nil {
+		return apperror.Internal("failed to delete session", err)
+	}
+
+	slog.Info("user logged out",
+		slog.String("user_id", session.UserID.String()),
+		slog.String("session_id", session.SessionID.String()),
+	)
+
+	return nil
 }
 
 func (s *AuthService) GetSession(ctx context.Context, sessionID uuid.UUID) (*domain.Session, error) {
@@ -110,11 +126,15 @@ func (s *AuthService) AuthenticateRequest(ctx context.Context, tokenStr string) 
 		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid token signature")
 	}
 
-	sessionID, ok := claims["sid"].(uuid.UUID)
+	sessionIDStr, ok := claims["sid"].(string)
 	if !ok {
 		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "token missing session id")
 	}
 
+	sessionID, err := uuid.Parse(sessionIDStr)
+	if err != nil {
+		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid session id format")
+	}
 	session, err := s.GetSession(ctx, sessionID)
 	if err != nil {
 		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "session not found")

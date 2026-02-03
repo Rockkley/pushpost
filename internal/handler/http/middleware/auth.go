@@ -13,9 +13,9 @@ import (
 type contextKey string
 
 const (
-	ctxUserIDKey    contextKey = "userID"
-	ctxSessionIDKey contextKey = "sessionID"
-	ctxDeviceIDKey  contextKey = "deviceID"
+	CtxUserIDKey    contextKey = "userID"
+	CtxSessionIDKey contextKey = "sessionID"
+	CtxDeviceIDKey  contextKey = "deviceID"
 )
 
 type AuthMiddleware struct {
@@ -40,9 +40,9 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			writeError(w, err)
 			return
 		}
-		ctx := context.WithValue(r.Context(), ctxUserIDKey, session.UserID)
-		ctx = context.WithValue(ctx, ctxSessionIDKey, session.SessionID)
-		ctx = context.WithValue(ctx, ctxDeviceIDKey, session.DeviceID)
+		ctx := context.WithValue(r.Context(), CtxUserIDKey, session.UserID)
+		ctx = context.WithValue(ctx, CtxSessionIDKey, session.SessionID)
+		ctx = context.WithValue(ctx, CtxDeviceIDKey, session.DeviceID)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

@@ -2,8 +2,10 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/handler/http/dto"
+	"github.com/rockkley/pushpost/internal/handler/http/middleware"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/internal/service"
 	"github.com/rockkley/pushpost/pkg/validator"
@@ -60,4 +62,19 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"token": token})
 
+}
+
+func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
+	sessionID, ok := r.Context().Value(middleware.CtxSessionIDKey).(uuid.UUID)
+	if !ok {
+		return apperror.Unauthorized(apperror.CodeUnauthorized, "invalid session")
+	}
+
+	if err := h.authService.Logout(r.Context(), sessionID); err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{
+		"message": "logged out successfully",
+	})
 }

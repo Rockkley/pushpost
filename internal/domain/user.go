@@ -6,6 +6,10 @@ import (
 	"time"
 )
 
+var (
+	ErrUserNotFound = errors.New("user not found")
+)
+
 type User struct {
 	Id           uuid.UUID
 	Username     string
@@ -26,12 +30,3 @@ func (u *User) DisplayName() string {
 	}
 	return u.Username
 }
-
-var (
-	ErrUserNotFound          = errors.New("user not found")
-	ErrEmailAlreadyExists    = errors.New("email already exists")
-	ErrUsernameAlreadyExists = errors.New("username already exists")
-	ErrInvalidEmail          = errors.New("invalid email format")
-	ErrInvalidPassword       = errors.New("password must be at least 8 characters long")
-	ErrInvalidUsername       = errors.New("username must be 3-30 characters long")
-)
