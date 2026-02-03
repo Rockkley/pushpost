@@ -15,7 +15,8 @@ type ErrorResponse struct {
 }
 
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {
-	if appErr, ok := err.(apperror.AppError); ok {
+	var appErr apperror.AppError
+	if errors.As(err, &appErr) {
 		handleAppError(w, r, appErr)
 		return
 	}

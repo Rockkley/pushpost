@@ -72,7 +72,8 @@ func extractBearerToken(header string) (string, error) {
 }
 
 func writeError(w http.ResponseWriter, err error) {
-	if appErr, ok := err.(apperror.AppError); ok {
+	var appErr apperror.AppError
+	if errors.As(err, &appErr) {
 		response := httperror.ErrorResponse{
 			Code:  appErr.Code(),
 			Field: appErr.Field(),
