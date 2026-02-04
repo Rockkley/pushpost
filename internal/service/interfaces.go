@@ -18,3 +18,6 @@ type AuthService interface {
 type MessageService interface {
 	SendMessage(ctx context.Context, senderID, receiverID uuid.UUID, content string) (*domain.Message, error)
 }
+
+type FriendService interface {
+}
