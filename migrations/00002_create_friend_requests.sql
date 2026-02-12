@@ -16,9 +16,9 @@ CREATE TABLE friend_requests
     CONSTRAINT no_self_request CHECK (sender_id != receiver_id)
 );
 
-CREATE INDEX idx_friend_requests_sender ON friend_requests (sender_id, status);
-CREATE INDEX idx_friend_requests_receiver ON friend_requests (receiver_id, status);
-CREATE INDEX idx_friend_requests_created ON friend_requests (created_at DESC);
+CREATE INDEX idx_friend_requests_sender ON friendship_requests (sender_id, status);
+CREATE INDEX idx_friend_requests_receiver ON friendship_requests (receiver_id, status);
+CREATE INDEX idx_friend_requests_created ON friendship_requests (created_at DESC);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
     RETURNS TRIGGER AS $$
@@ -29,17 +29,17 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_friend_requests_updated_at
-    BEFORE UPDATE ON friend_requests
+    BEFORE UPDATE ON friendship_requests
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();
 
-COMMENT ON COLUMN friend_requests.status IS 'pending/rejected';
+COMMENT ON COLUMN friendship_requests.status IS 'pending/rejected';
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TRIGGER IF EXISTS update_friend_requests_updated_at ON friend_requests;
+DROP TRIGGER IF EXISTS update_friend_requests_updated_at ON friendship_requests;
 DROP FUNCTION IF EXISTS update_updated_at_column();
-DROP TABLE IF EXISTS friend_requests CASCADE;
+DROP TABLE IF EXISTS friendship_requests CASCADE;
 -- +goose StatementEnd

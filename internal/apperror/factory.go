@@ -104,7 +104,7 @@ func Service(message string, cause error) AppError {
 // Concrete errors
 
 func UserNotFound() AppError {
-	return NotFound(CodeUserNotFound, "user not found")
+	return NotFound(CodeUserNotFound, "user_service not found")
 }
 
 func EmailAlreadyExists() AppError {

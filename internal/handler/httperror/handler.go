@@ -36,7 +36,7 @@ func handleAppError(w http.ResponseWriter, r *http.Request, appErr apperror.AppE
 	}
 	switch appErr.Type() {
 	case apperror.ErrorTypeClient, apperror.ErrorTypeValidation:
-		slog.Debug("client error",
+		slog.Debug("clients error",
 			slog.String("code", appErr.Code()),
 			slog.String("field", appErr.Field()),
 			slog.String("path", r.URL.Path),

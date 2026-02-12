@@ -15,6 +15,15 @@ const (
 	CodeFieldTooLong     = "field_too_long"
 	CodeFieldWeak        = "field_weak"
 
+	// User Errors
+	CodeUserDeleted = "user_deleted"
+
+	// Friendship Errors
+	CodeAlreadyFriends      = "already_friends"
+	CodeNotFriends          = "not_friends"
+	CodeFriendRequestExists = "friend_request_exists"
+	CodeBefriendSelf        = "cannot_befriend_self"
+
 	// Conflict Errors
 	CodeEmailExists    = "email_already_exists"
 	CodeUsernameExists = "username_already_exists"

@@ -23,7 +23,7 @@ CREATE INDEX idx_friendships_users ON friendships (user1_id, user2_id);
 CREATE OR REPLACE FUNCTION cleanup_friend_request_on_friendship()
     RETURNS TRIGGER AS $$
 BEGIN
-    DELETE FROM friend_requests
+    DELETE FROM friendship_requests
     WHERE (sender_id = NEW.user1_id AND receiver_id = NEW.user2_id)
        OR (sender_id = NEW.user2_id AND receiver_id = NEW.user1_id);
 

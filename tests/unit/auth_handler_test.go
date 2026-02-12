@@ -6,6 +6,10 @@ import (
 	"encoding/json"
 	"fmt"
 	http2 "github.com/rockkley/pushpost/internal/handler/http"
+	"github.com/rockkley/pushpost/internal/services/auth_service/domain"
+	http3 "github.com/rockkley/pushpost/internal/services/auth_service/transport/http"
+	dto2 "github.com/rockkley/pushpost/internal/services/auth_service/transport/http/dto"
+	"github.com/rockkley/pushpost/internal/services/user_service/internal/entity"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,8 +17,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/apperror"
-	"github.com/rockkley/pushpost/internal/domain"
-	"github.com/rockkley/pushpost/internal/handler/http/dto"
 	"github.com/rockkley/pushpost/internal/handler/http/middleware"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/stretchr/testify/require"
@@ -34,20 +36,20 @@ func decodeJSONResponse(t *testing.T, resp *httptest.ResponseRecorder, v any) {
 }
 
 type mockAuthService struct {
-	registerFunc            func(ctx context.Context, req dto.RegisterUserDto) (*domain.User, error)
-	loginFunc               func(ctx context.Context, req dto.LoginUserDTO) (string, error)
+	registerFunc            func(ctx context.Context, req dto2.RegisterUserDto) (*entity.User, error)
+	loginFunc               func(ctx context.Context, req dto2.LoginUserDTO) (string, error)
 	logoutFunc              func(ctx context.Context, tokenID uuid.UUID) error
 	authenticateRequestFunc func(ctx context.Context, tokenStr string) (*domain.Session, error)
 }
 
-func (m *mockAuthService) Register(ctx context.Context, req dto.RegisterUserDto) (*domain.User, error) {
+func (m *mockAuthService) Register(ctx context.Context, req dto2.RegisterUserDto) (*entity.User, error) {
 	if m.registerFunc == nil {
 		return nil, nil
 	}
 	return m.registerFunc(ctx, req)
 }
 
-func (m *mockAuthService) Login(ctx context.Context, req dto.LoginUserDTO) (string, error) {
+func (m *mockAuthService) Login(ctx context.Context, req dto2.LoginUserDTO) (string, error) {
 	if m.loginFunc == nil {
 		return "", nil
 	}
@@ -69,7 +71,7 @@ func (m *mockAuthService) AuthenticateRequest(ctx context.Context, tokenStr stri
 }
 
 func TestAuthHandlerRegisterInvalidJSON(t *testing.T) {
-	handler := http2.NewAuthHandler(&mockAuthService{})
+	handler := http3.NewAuthHandler(&mockAuthService{})
 	req := newJSONRequest(t, http.MethodPost, "/register", "{")
 	resp := httptest.NewRecorder()
 
@@ -99,19 +101,19 @@ func TestAuthHandlerRegisterValidationErrors(t *testing.T) {
 		},
 		{
 			name:       "password without digits",
-			payload:    `{"username":"valid_user","email":"user@example.com","password":"OnlyLetters"}`,
+			payload:    `{"username":"valid_user","email":"user_service@example.com","password":"OnlyLetters"}`,
 			wantFields: map[string]string{"password": "field_weak"},
 		},
 		{
 			name:       "password without letters",
-			payload:    `{"username":"valid_user","email":"user@example.com","password":"12345678"}`,
+			payload:    `{"username":"valid_user","email":"user_service@example.com","password":"12345678"}`,
 			wantFields: map[string]string{"password": "field_weak"},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := http2.NewAuthHandler(&mockAuthService{})
+			handler := http3.NewAuthHandler(&mockAuthService{})
 			req := newJSONRequest(t, http.MethodPost, "/register", tt.payload)
 			resp := httptest.NewRecorder()
 
@@ -128,17 +130,17 @@ func TestAuthHandlerRegisterValidationErrors(t *testing.T) {
 
 func TestAuthHandlerRegisterSuccess(t *testing.T) {
 	called := false
-	expectedReq := dto.RegisterUserDto{Username: "username", Email: "user@example.com", Password: "Password123"}
+	expectedReq := dto2.RegisterUserDto{Username: "username", Email: "user_service@example.com", Password: "Password123"}
 	userID := uuid.New()
 	service := &mockAuthService{
-		registerFunc: func(ctx context.Context, req dto.RegisterUserDto) (*domain.User, error) {
+		registerFunc: func(ctx context.Context, req dto2.RegisterUserDto) (*entity.User, error) {
 			called = true
 			require.Equal(t, expectedReq, req)
-			return &domain.User{Id: userID, Username: "username", Email: "user@example.com"}, nil
+			return &entity.User{Id: userID, Username: "username", Email: "user_service@example.com"}, nil
 		},
 	}
-	payload := `{"username":"username","email":"user@example.com","password":"Password123"}`
-	handler := http2.NewAuthHandler(service)
+	payload := `{"username":"username","email":"user_service@example.com","password":"Password123"}`
+	handler := http3.NewAuthHandler(service)
 	req := newJSONRequest(t, http.MethodPost, "/register", payload)
 	resp := httptest.NewRecorder()
 
@@ -146,26 +148,26 @@ func TestAuthHandlerRegisterSuccess(t *testing.T) {
 
 	require.True(t, called)
 	require.Equal(t, http.StatusCreated, resp.Code)
-	var body domain.User
+	var body entity.User
 	decodeJSONResponse(t, resp, &body)
 	require.Equal(t, userID, body.Id)
 	require.Equal(t, "username", body.Username)
-	require.Equal(t, "user@example.com", body.Email)
+	require.Equal(t, "user_service@example.com", body.Email)
 }
 
 func TestAuthHandlerRegisterNoPasswordHashInResponse(t *testing.T) {
 	service := &mockAuthService{
-		registerFunc: func(ctx context.Context, req dto.RegisterUserDto) (*domain.User, error) {
-			return &domain.User{
+		registerFunc: func(ctx context.Context, req dto2.RegisterUserDto) (*entity.User, error) {
+			return &entity.User{
 				Id:           uuid.New(),
-				Username:     "user",
-				Email:        "user@example.com",
+				Username:     "user_service",
+				Email:        "user_service@example.com",
 				PasswordHash: "hashed_password_should_not_be_returned",
 			}, nil
 		},
 	}
-	handler := http2.NewAuthHandler(service)
-	req := newJSONRequest(t, http.MethodPost, "/register", `{"username":"user","email":"user@example.com","password":"Password123"}`)
+	handler := http3.NewAuthHandler(service)
+	req := newJSONRequest(t, http.MethodPost, "/register", `{"username":"user_service","email":"user_service@example.com","password":"Password123"}`)
 	resp := httptest.NewRecorder()
 
 	http2.MakeHandler(handler.Register).ServeHTTP(resp, req)
@@ -177,7 +179,7 @@ func TestAuthHandlerRegisterNoPasswordHashInResponse(t *testing.T) {
 }
 
 func TestAuthHandlerRegisterEmptyBody(t *testing.T) {
-	handler := http2.NewAuthHandler(&mockAuthService{})
+	handler := http3.NewAuthHandler(&mockAuthService{})
 	req := httptest.NewRequest(http.MethodPost, "/register", nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
@@ -191,9 +193,9 @@ func TestAuthHandlerRegisterEmptyBody(t *testing.T) {
 }
 
 func TestAuthHandlerRegisterLongUsername(t *testing.T) {
-	handler := http2.NewAuthHandler(&mockAuthService{})
+	handler := http3.NewAuthHandler(&mockAuthService{})
 	longUsername := strings.Repeat("a", 1000)
-	payload := fmt.Sprintf(`{"username":"%s","email":"user@example.com","password":"Password123"}`, longUsername)
+	payload := fmt.Sprintf(`{"username":"%s","email":"user_service@example.com","password":"Password123"}`, longUsername)
 	req := newJSONRequest(t, http.MethodPost, "/register", payload)
 	resp := httptest.NewRecorder()
 
@@ -210,16 +212,16 @@ func TestAuthHandlerRegisterInvalidCharacters(t *testing.T) {
 		name     string
 		username string
 	}{
-		{name: "spaces", username: "user name"},
-		{name: "special chars", username: "user@name"},
-		{name: "emoji", username: "user😀"},
+		{name: "spaces", username: "user_service name"},
+		{name: "special chars", username: "user_service@name"},
+		{name: "emoji", username: "user_service😀"},
 		{name: "cyrillic", username: "пользователь"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			handler := http2.NewAuthHandler(&mockAuthService{})
-			payload := fmt.Sprintf(`{"username":"%s","email":"user@example.com","password":"Password123"}`, tt.username)
+			handler := http3.NewAuthHandler(&mockAuthService{})
+			payload := fmt.Sprintf(`{"username":"%s","email":"user_service@example.com","password":"Password123"}`, tt.username)
 			req := newJSONRequest(t, http.MethodPost, "/register", payload)
 			resp := httptest.NewRecorder()
 
@@ -260,12 +262,12 @@ func TestAuthHandlerRegisterServiceError(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			service := &mockAuthService{
-				registerFunc: func(ctx context.Context, req dto.RegisterUserDto) (*domain.User, error) {
+				registerFunc: func(ctx context.Context, req dto2.RegisterUserDto) (*entity.User, error) {
 					return nil, tt.err
 				},
 			}
-			handler := http2.NewAuthHandler(service)
-			req := newJSONRequest(t, http.MethodPost, "/register", `{"username":"username","email":"user@example.com","password":"Password123"}`)
+			handler := http3.NewAuthHandler(service)
+			req := newJSONRequest(t, http.MethodPost, "/register", `{"username":"username","email":"user_service@example.com","password":"Password123"}`)
 			resp := httptest.NewRecorder()
 
 			http2.MakeHandler(handler.Register).ServeHTTP(resp, req)
@@ -280,7 +282,7 @@ func TestAuthHandlerRegisterServiceError(t *testing.T) {
 }
 
 func TestAuthHandlerLoginInvalidJSON(t *testing.T) {
-	handler := http2.NewAuthHandler(&mockAuthService{})
+	handler := http3.NewAuthHandler(&mockAuthService{})
 	req := newJSONRequest(t, http.MethodPost, "/login", "{")
 	resp := httptest.NewRecorder()
 
@@ -296,14 +298,14 @@ func TestAuthHandlerLoginSuccess(t *testing.T) {
 	called := false
 	deviceID := uuid.New()
 	service := &mockAuthService{
-		loginFunc: func(ctx context.Context, req dto.LoginUserDTO) (string, error) {
+		loginFunc: func(ctx context.Context, req dto2.LoginUserDTO) (string, error) {
 			called = true
-			require.Equal(t, dto.LoginUserDTO{Email: "user@example.com", Password: "Password123", DeviceID: deviceID}, req)
+			require.Equal(t, dto2.LoginUserDTO{Email: "user_service@example.com", Password: "Password123", DeviceID: deviceID}, req)
 			return "token-value", nil
 		},
 	}
-	handler := http2.NewAuthHandler(service)
-	payload := `{"email":"user@example.com","password":"Password123","deviceID":"` + deviceID.String() + `"}`
+	handler := http3.NewAuthHandler(service)
+	payload := `{"email":"user_service@example.com","password":"Password123","deviceID":"` + deviceID.String() + `"}`
 	req := newJSONRequest(t, http.MethodPost, "/login", payload)
 	resp := httptest.NewRecorder()
 
@@ -319,14 +321,14 @@ func TestAuthHandlerLoginSuccess(t *testing.T) {
 func TestAuthHandlerLoginNoDeviceID(t *testing.T) {
 	called := false
 	service := &mockAuthService{
-		loginFunc: func(ctx context.Context, req dto.LoginUserDTO) (string, error) {
+		loginFunc: func(ctx context.Context, req dto2.LoginUserDTO) (string, error) {
 			called = true
 			require.Equal(t, uuid.Nil, req.DeviceID)
 			return "token-value", nil
 		},
 	}
-	handler := http2.NewAuthHandler(service)
-	req := newJSONRequest(t, http.MethodPost, "/login", `{"email":"user@example.com","password":"Password123"}`)
+	handler := http3.NewAuthHandler(service)
+	req := newJSONRequest(t, http.MethodPost, "/login", `{"email":"user_service@example.com","password":"Password123"}`)
 	resp := httptest.NewRecorder()
 
 	http2.MakeHandler(handler.Login).ServeHTTP(resp, req)
@@ -337,12 +339,12 @@ func TestAuthHandlerLoginNoDeviceID(t *testing.T) {
 
 func TestAuthHandlerLoginServiceError(t *testing.T) {
 	service := &mockAuthService{
-		loginFunc: func(ctx context.Context, req dto.LoginUserDTO) (string, error) {
+		loginFunc: func(ctx context.Context, req dto2.LoginUserDTO) (string, error) {
 			return "", apperror.InvalidCredentials()
 		},
 	}
-	handler := http2.NewAuthHandler(service)
-	req := newJSONRequest(t, http.MethodPost, "/login", `{"email":"user@example.com","password":"Password123","deviceID":"`+uuid.New().String()+`"}`)
+	handler := http3.NewAuthHandler(service)
+	req := newJSONRequest(t, http.MethodPost, "/login", `{"email":"user_service@example.com","password":"Password123","deviceID":"`+uuid.New().String()+`"}`)
 	resp := httptest.NewRecorder()
 
 	http2.MakeHandler(handler.Login).ServeHTTP(resp, req)
@@ -354,7 +356,7 @@ func TestAuthHandlerLoginServiceError(t *testing.T) {
 }
 
 func TestAuthHandlerLogoutUnauthorized(t *testing.T) {
-	handler := http2.NewAuthHandler(&mockAuthService{})
+	handler := http3.NewAuthHandler(&mockAuthService{})
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	resp := httptest.NewRecorder()
 
@@ -376,7 +378,7 @@ func TestAuthHandlerLogoutSuccess(t *testing.T) {
 			return nil
 		},
 	}
-	handler := http2.NewAuthHandler(service)
+	handler := http3.NewAuthHandler(service)
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.CtxSessionIDKey, sessionID))
 	resp := httptest.NewRecorder()
@@ -396,7 +398,7 @@ func TestAuthHandlerLogoutServiceError(t *testing.T) {
 			return apperror.SessionExpired()
 		},
 	}
-	handler := http2.NewAuthHandler(service)
+	handler := http3.NewAuthHandler(service)
 	req := httptest.NewRequest(http.MethodPost, "/logout", nil)
 	req = req.WithContext(context.WithValue(req.Context(), middleware.CtxSessionIDKey, uuid.New()))
 	resp := httptest.NewRecorder()
