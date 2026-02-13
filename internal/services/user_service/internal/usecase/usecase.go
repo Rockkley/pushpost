@@ -5,7 +5,7 @@ import (
 	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/services/user_service/internal/entity"
 	"github.com/rockkley/pushpost/internal/services/user_service/internal/repository"
-	"github.com/rockkley/pushpost/internal/validator"
+	"github.com/rockkley/pushpost/internal/services/user_service/internal/transport/http/dto/validator"
 )
 
 type UserUseCase struct {

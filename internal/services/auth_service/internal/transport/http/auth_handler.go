@@ -4,11 +4,10 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/apperror"
-	"github.com/rockkley/pushpost/internal/handler/http/middleware"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/internal/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/internal/services/auth_service/internal/transport/http/dto"
-	"github.com/rockkley/pushpost/internal/validator"
+	"github.com/rockkley/pushpost/internal/services/auth_service/internal/transport/http/middleware"
 	"net/http"
 )
 
@@ -28,7 +27,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 		return apperror.BadRequest(apperror.CodeValidationFailed, "invalid JSON")
 	}
 
-	validationErrors := validator.ValidateRegisterUser(req)
+	validationErrors := dto.ValidateRegisterUser(req)
 
 	if len(validationErrors) > 0 {
 		errMap := make(map[string]string)

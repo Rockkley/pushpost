@@ -5,7 +5,7 @@ import (
 	"errors"
 	"github.com/rockkley/pushpost/internal/apperror"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
-	"github.com/rockkley/pushpost/internal/service"
+	"github.com/rockkley/pushpost/internal/services/auth_service/internal/domain"
 	"net/http"
 	"strings"
 )
@@ -19,11 +19,11 @@ const (
 )
 
 type AuthMiddleware struct {
-	authService service.AuthService
+	authUsecase domain.AuthUsecase
 }
 
-func NewAuthMiddleware(authService service.AuthService) *AuthMiddleware {
-	return &AuthMiddleware{authService: authService}
+func NewAuthMiddleware(authUsecase domain.AuthUsecase) *AuthMiddleware {
+	return &AuthMiddleware{authUsecase: authUsecase}
 }
 
 func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
@@ -35,7 +35,7 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		session, err := m.authService.AuthenticateRequest(r.Context(), tokenStr)
+		session, err := m.authUsecase.AuthenticateRequest(r.Context(), tokenStr)
 		if err != nil {
 			writeError(w, err)
 			return

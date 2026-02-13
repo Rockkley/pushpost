@@ -1,7 +1,6 @@
-package validator
+package dto
 
 import (
-	"github.com/rockkley/pushpost/internal/services/auth_service/transport/http/dto"
 	"regexp"
 	"strings"
 	"unicode"
@@ -42,7 +41,7 @@ func (e ValidationError) Error() string { return e.Code }
 
 func newError(code, field string) *ValidationError { return &ValidationError{Code: code, Field: field} }
 
-func ValidateRegisterUser(dto dto.RegisterUserDto) []*ValidationError {
+func ValidateRegisterUser(dto RegisterUserDto) []*ValidationError {
 	var errs []*ValidationError
 
 	if err := ValidateUsername(dto.Username); err != nil {

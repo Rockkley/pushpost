@@ -45,6 +45,7 @@ func NewUserClient(baseURL string, httpClient *http.Client) (*UserClient, error)
 
 func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*UserResponse, error) {
 	endpoint, err := url.JoinPath(c.baseURL, "users")
+	fmt.Println("endpoint:", endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}

@@ -1,6 +1,9 @@
 package dto
 
-import "github.com/google/uuid"
+import (
+	"errors"
+	"github.com/google/uuid"
+)
 
 type LoginUserDTO struct {
 	Email    string    `json:"email"`
@@ -10,13 +13,13 @@ type LoginUserDTO struct {
 
 func (dto *LoginUserDTO) Validate() error {
 	if dto.Email == "" {
-		return ErrEmailRequired
+		return errors.New(ErrEmailRequired)
 	}
 	if dto.Password == "" {
-		return ErrPasswordRequired
+		return errors.New("password is required")
 	}
 	if dto.DeviceID == uuid.Nil {
-		return ErrDeviceIDRequired
+		return errors.New("device ID is required")
 	}
 	return nil
 }
