@@ -3,9 +3,9 @@ package user_api
 import "github.com/google/uuid"
 
 type CreateUserRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username     string `json:"username"`
+	Email        string `json:"email"`
+	PasswordHash string `json:"passwordHash"`
 }
 
 type UserResponse struct {

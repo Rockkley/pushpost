@@ -3,7 +3,7 @@ package httperror
 import (
 	"encoding/json"
 	"errors"
-	"github.com/rockkley/pushpost/internal/apperror"
+	"github.com/rockkley/pushpost/services/common/apperror"
 	"log/slog"
 	"net/http"
 )

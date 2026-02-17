@@ -1,20 +1,14 @@
 package http
 
-import (
-	entity2 "github.com/rockkley/pushpost/internal/services/message/entity"
-	"github.com/rockkley/pushpost/internal/services/user_service/internal/entity"
-	"net/http"
-)
-
-var errorStatusMap = map[error]int{
-	entity.ErrUserNotFound:       http.StatusNotFound,
-	entity2.ErrMessageNotFound:   http.StatusNotFound,
-	entity2.ErrCannotMessageSelf: http.StatusBadRequest,
-	entity2.ErrMessageTooLong:    http.StatusBadRequest,
-	entity2.ErrMessageEmpty:      http.StatusBadRequest,
-	entity2.ErrReceiverDeleted:   http.StatusBadRequest,
-	entity2.ErrSenderDeleted:     http.StatusForbidden,
-}
+//var errorStatusMap = map[error]int{
+//	entity.ErrUserNotFound:      http.StatusNotFound,
+//	entity.ErrMessageNotFound:   http.StatusNotFound,
+//	entity.ErrCannotMessageSelf: http.StatusBadRequest,
+//	entity.ErrMessageTooLong:    http.StatusBadRequest,
+//	entity.ErrMessageEmpty:      http.StatusBadRequest,
+//	entity.ErrReceiverDeleted:   http.StatusBadRequest,
+//	entity.ErrSenderDeleted:     http.StatusForbidden,
+//}
 
 type HTTPError struct {
 	Status int

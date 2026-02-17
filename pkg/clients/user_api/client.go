@@ -44,33 +44,39 @@ func NewUserClient(baseURL string, httpClient *http.Client) (*UserClient, error)
 }
 
 func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*UserResponse, error) {
-	endpoint, err := url.JoinPath(c.baseURL, "users")
-	fmt.Println("endpoint:", endpoint)
+	endpoint, err := url.JoinPath(c.baseURL, "user")
+
 	if err != nil {
+
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	body, err := json.Marshal(req)
 	if err != nil {
+
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 
 	if err != nil {
+
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(httpReq)
+
 	if err != nil {
+
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+
 		return nil, decodeError(resp)
 	}
 
@@ -79,7 +85,9 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 
 func (c *UserClient) AuthenticateUser(ctx context.Context, email, password string) (*UserResponse, error) {
 	endpoint, err := url.JoinPath(c.baseURL, "users", "authenticate-user")
+	fmt.Println(endpoint)
 	if err != nil {
+
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
@@ -89,26 +97,32 @@ func (c *UserClient) AuthenticateUser(ctx context.Context, email, password strin
 	}
 
 	bodyBytes, err := json.Marshal(body)
+
 	if err != nil {
+
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
 
 	if err != nil {
+
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	httpReq.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.client.Do(httpReq)
+
 	if err != nil {
+
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+
 		return nil, decodeError(resp)
 	}
 
