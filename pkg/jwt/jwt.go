@@ -9,10 +9,15 @@ import (
 
 type Manager struct {
 	secret []byte
+	ttl    time.Duration
 }
 
-func NewManager(secret string) *Manager {
-	return &Manager{secret: []byte(secret)}
+func NewManager(secret string, ttl *time.Duration) *Manager {
+	t := 24 * time.Hour
+	if ttl != nil {
+		t = *ttl
+	}
+	return &Manager{secret: []byte(secret), ttl: t}
 }
 
 func (m *Manager) Generate(userID, deviceID, sessionID uuid.UUID) (string, error) {

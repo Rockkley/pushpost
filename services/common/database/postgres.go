@@ -6,19 +6,24 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-func Connect(dbUrl string) (*sql.DB, error) {
-	db, err := sql.Open("pgx", dbUrl)
+type Config struct {
+	URL          string
+	MaxOpenConns int
+	MaxIdleConns int
+}
 
+func Connect(cfg Config) (*sql.DB, error) {
+	db, err := sql.Open("pgx", cfg.URL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open database, %w\n", err)
+		return nil, fmt.Errorf("failed to open database: %w", err)
 	}
 
 	if err = db.Ping(); err != nil {
-		return nil, fmt.Errorf("failed to ping database, %w\n", err)
+		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5) //fixme parse from config
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
 
 	return db, nil
 }
