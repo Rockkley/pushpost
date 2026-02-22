@@ -52,6 +52,7 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 	}
 
 	body, err := json.Marshal(req)
+
 	if err != nil {
 
 		return nil, fmt.Errorf("marshal request: %w", err)
@@ -85,15 +86,15 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 
 func (c *UserClient) AuthenticateUser(ctx context.Context, email, password string) (*UserResponse, error) {
 	endpoint, err := url.JoinPath(c.baseURL, "users", "authenticate-user")
-	fmt.Println(endpoint)
+
 	if err != nil {
 
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	body := map[string]string{
-		"email":    email,
-		"password": password,
+		"email":        email,
+		"passwordHash": password,
 	}
 
 	bodyBytes, err := json.Marshal(body)

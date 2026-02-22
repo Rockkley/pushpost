@@ -4,9 +4,11 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/user_service/internal/ctxlog"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"github.com/rockkley/pushpost/services/user_service/internal/repository"
+	"log/slog"
 )
 
 type UserUseCase struct {
@@ -17,16 +19,19 @@ func NewUserUseCase(repo repository.UserRepository) *UserUseCase {
 	return &UserUseCase{repo: repo}
 }
 
-func (u *UserUseCase) AuthenticateUser(ctx context.Context, email, password string) (*entity.User, error) {
-	user, err := u.repo.FindByEmail(ctx, email)
-	if err != nil {
+func (u *UserUseCase) AuthenticateUser(ctx context.Context, dto dto.AuthenticateUserRequestDTO) (*entity.User, error) {
+	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.AuthenticateUser"))
 
+	user, err := u.repo.FindByEmail(ctx, dto.Email)
+
+	if err != nil {
+		log.Debug("user not found by email")
 		return nil, apperror.InvalidCredentials()
 	}
 
 	if user.IsDeleted() {
-
-		return nil, apperror.InvalidCredentials() // don't reveal if the user exists
+		log.Warn("auth attempt on deleted account", slog.String("user_id", user.Id.String()))
+		return nil, apperror.InvalidCredentials()
 	}
 
 	//if err = validator.ValidatePassword(password); err != nil {
@@ -38,7 +43,10 @@ func (u *UserUseCase) AuthenticateUser(ctx context.Context, email, password stri
 }
 
 func (u *UserUseCase) CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*entity.User, error) {
+	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.CreateUser"))
+
 	if err := dto.Validate(); err != nil {
+		log.Debug("dto validation failed", slog.Any("error", err))
 		return nil, err
 	}
 
@@ -50,9 +58,10 @@ func (u *UserUseCase) CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*e
 	}
 
 	if err := u.repo.Create(ctx, user); err != nil {
-
+		log.Warn("failed to create user", slog.Any("error", err))
 		return nil, err
 	}
 
+	log.Info("user created", slog.String("user_id", user.Id.String()))
 	return user, nil
 }

@@ -1,7 +1,6 @@
 package dto
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
@@ -54,7 +53,7 @@ func ValidateRegisterUser(dto RegisterUserDto) []*ValidationError {
 	}
 
 	if err := ValidatePassword(dto.Password); err != nil {
-		fmt.Println(err)
+
 		errs = append(errs, err)
 	}
 

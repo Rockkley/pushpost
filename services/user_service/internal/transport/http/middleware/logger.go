@@ -6,7 +6,7 @@ import (
 	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/rockkley/pushpost/services/auth_service/internal/ctxlog"
+	"github.com/rockkley/pushpost/services/user_service/internal/ctxlog"
 )
 
 func Logger(log *slog.Logger) func(next http.Handler) http.Handler {

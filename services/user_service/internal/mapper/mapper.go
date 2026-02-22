@@ -12,3 +12,10 @@ func CreateUserFromRequestToUseCase(req reqDTO.CreateUserRequestDTO) *dto.Create
 		PasswordHash: req.PasswordHash,
 	}
 }
+
+func AuthUserFromRequestToUseCase(req reqDTO.AuthenticateUserRequestDTO) *dto.AuthenticateUserRequestDTO {
+	return &dto.AuthenticateUserRequestDTO{
+		Email:        req.Email,
+		PasswordHash: req.PasswordHash,
+	}
+}

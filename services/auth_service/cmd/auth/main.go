@@ -27,15 +27,21 @@ func main() {
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		log.Fatal("failed to load config:", err)
 	}
 
+	logger := newLogger("development")
+	slog.SetDefault(logger)
+
 	userClient, err := user_api.NewUserClient(cfg.UserSvc.BaseURL, &http.Client{
 		Timeout: cfg.UserSvc.Timeout,
 	})
+
 	if err != nil {
-		log.Fatal("failed to create user client:", err)
+		logger.Error("failed to create user client", slog.Any("error", err))
+		os.Exit(1)
 	}
 
 	sessionStore := memory.NewSessionStore()
@@ -43,7 +49,7 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, jwtManager)
 	authHandler := myHTTP.NewAuthHandler(authUsecase)
 	authMiddleware := middleware.NewAuthMiddleware(authUsecase)
-	mux := transport.NewRouter(authMiddleware, authHandler)
+	mux := transport.NewRouter(logger, authMiddleware, authHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
@@ -52,25 +58,43 @@ func main() {
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
 
+	serverErr := make(chan error, 1)
 	go func() {
-		slog.Info("auth service started", "port", cfg.HTTP.Port)
-		if err = srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Fatalf("server error:%v", err)
+		logger.Info("auth service started", slog.String("port", cfg.HTTP.Port))
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
 		}
 	}()
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
-	<-quit
 
-	slog.Info("auth service shutting down...")
+	select {
+	case err := <-serverErr:
+		logger.Error("server failed to start", slog.Any("error", err))
+		os.Exit(1)
+	case <-quit:
+		logger.Info("auth service shutting down...")
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()
 
 	if err = srv.Shutdown(ctx); err != nil {
-		log.Fatalf("graceful shutdown error: %v", err)
+		logger.Error("graceful shutdown failed", slog.Any("error", err))
+		os.Exit(1)
 	}
 
-	slog.Info("auth service stopped")
+	logger.Info("auth service stopped")
+}
+
+func newLogger(env string) *slog.Logger {
+	switch env {
+	case "production":
+		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	case "development":
+		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	default: // local
+		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
+	}
 }

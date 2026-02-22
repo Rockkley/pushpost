@@ -7,6 +7,6 @@ import (
 )
 
 type UserUseCase interface {
-	AuthenticateUser(ctx context.Context, email, password string) (*entity.User, error)
+	AuthenticateUser(ctx context.Context, dto dto.AuthenticateUserRequestDTO) (*entity.User, error)
 	CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*entity.User, error)
 }

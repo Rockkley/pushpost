@@ -25,7 +25,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 		return err
 	}
-	fmt.Println("Received CreateUser request:", req)
+
 	if err := req.Validate(); err != nil {
 
 		return err
@@ -40,4 +40,28 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return httperror.WriteJSON(w, http.StatusCreated, user)
+}
+
+func (h *UserHandler) AuthenticateUser(w http.ResponseWriter, r *http.Request) error {
+	var req dto.AuthenticateUserRequestDTO
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+
+		return err
+	}
+	fmt.Println(req)
+	if err := req.Validate(); err != nil {
+		return err
+	}
+
+	mappedDTO := mapper.AuthUserFromRequestToUseCase(req)
+
+	user, err := h.userUseCase.AuthenticateUser(r.Context(), *mappedDTO)
+
+	if err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, user)
+
 }

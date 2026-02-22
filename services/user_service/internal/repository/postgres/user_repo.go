@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/common/apperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
@@ -56,6 +57,8 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*entit
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+
+	fmt.Println("\n\n\nFinding user by email:", email)
 	email = strings.ToLower(strings.TrimSpace(email))
 	query := `
 			SELECT id, username, email, password_hash, created_at, deleted_at

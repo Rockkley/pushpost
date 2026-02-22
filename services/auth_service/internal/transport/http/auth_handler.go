@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
@@ -29,7 +28,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	validationErrors := dto.ValidateRegisterUser(req)
-	fmt.Println(req)
+
 	if len(validationErrors) > 0 {
 		errMap := make(map[string]string)
 		for _, err := range validationErrors {
