@@ -22,7 +22,7 @@ func NewUserUseCase(repo repository.UserRepository) *UserUseCase {
 func (u *UserUseCase) AuthenticateUser(ctx context.Context, dto dto.AuthenticateUserRequestDTO) (*entity.User, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.AuthenticateUser"))
 
-	user, err := u.repo.FindByEmail(ctx, dto.Email)
+	user, err := u.repo.GetUserByEmail(ctx, dto.Email)
 
 	if err != nil {
 		log.Debug("user not found by email")
@@ -63,5 +63,23 @@ func (u *UserUseCase) CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*e
 	}
 
 	log.Info("user created", slog.String("user_id", user.Id.String()))
+	return user, nil
+}
+
+func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
+	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.FindUserByEmail"))
+
+	user, err := u.repo.GetUserByEmail(ctx, email)
+
+	if err != nil {
+		log.Debug("user not found by email")
+		return nil, apperror.NotFound(apperror.CodeUserNotFound, "user not found")
+	}
+
+	if user.IsDeleted() {
+		log.Warn("attempt to find deleted account by email", slog.String("user_id", user.Id.String()))
+		return nil, apperror.NotFound(apperror.CodeUserDeleted, "user is deleted")
+	}
+
 	return user, nil
 }

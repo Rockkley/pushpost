@@ -27,7 +27,7 @@ func NewRouter(
 	r.Post("/register", MakeHandler(authHandler.Register))
 	r.Post("/login", MakeHandler(authHandler.Login))
 
-	r.Route("/api/user_service", func(r chi.Router) {
+	r.Route("/ra", func(r chi.Router) {
 		r.Use(authMW.RequireAuth)
 		r.Post("/logout", MakeHandler(authHandler.Logout))
 	})

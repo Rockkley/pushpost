@@ -67,10 +67,29 @@ func (s *AuthUsecase) Register(ctx context.Context, data dto2.RegisterUserDto) (
 
 func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Login"))
-	hashedPassword, err := passwordTools.Hash(dto.Password)
-	user, err := s.userClient.AuthenticateUser(ctx, dto.Email, hashedPassword) // fix me
+
+	user, err := s.userClient.GetUserByEmail(ctx, dto.Email)
+
+	if err != nil {
+		log.Warn("user not found by email", slog.String("email", dto.Email))
+		return "", apperror.InvalidCredentials()
+	}
+
+	//if user.IsDeleted() {
+	//	log.Warn("auth attempt on deleted account", slog.String("user_id", user.ID.String()))
+	//	return "", apperror.InvalidCredentials()
+	//}
+
+	if err = passwordTools.Compare(dto.Password, user.PasswordHash); err != nil {
+		log.Debug("password mismatch for user", slog.String("user_id", user.ID.String()))
+
+		return "", apperror.InvalidCredentials()
+	}
+
+	authUser, err := s.userClient.AuthenticateUser(ctx, dto.Email, dto.Password) // fix me
 	if err != nil {
 		log.Warn("authentication failed", slog.Any("error", err))
+
 		return "", err
 	}
 
@@ -86,7 +105,7 @@ func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string,
 
 	session := &domain.Session{
 		SessionID: sessionID,
-		UserID:    user.ID,
+		UserID:    authUser.ID,
 		DeviceID:  deviceID,
 		Expires:   time.Now().Add(24 * time.Hour).Unix(),
 	}
@@ -96,14 +115,14 @@ func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string,
 		return "", apperror.Internal("failed to create session", err)
 	}
 
-	token, err := s.jwtManager.Generate(user.ID, dto.DeviceID, sessionID)
+	token, err := s.jwtManager.Generate(authUser.ID, dto.DeviceID, sessionID)
 	if err != nil {
 		log.Error("failed to generate token", slog.Any("error", err))
 		return "", apperror.Internal("failed to generate token", err)
 	}
 
 	log.Info("user logged in",
-		slog.String("user_id", user.ID.String()),
+		slog.String("user_id", authUser.ID.String()),
 		slog.String("session_id", sessionID.String()),
 		slog.String("device_id", deviceID.String()),
 	)

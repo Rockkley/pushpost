@@ -9,9 +9,10 @@ type CreateUserRequest struct {
 }
 
 type UserResponse struct {
-	ID       uuid.UUID `json:"id"`
-	Username string    `json:"username"`
-	Email    string    `json:"email"`
+	ID           uuid.UUID `json:"id"`
+	Username     string    `json:"username"`
+	Email        string    `json:"email"`
+	PasswordHash string    `json:"passwordHash"`
 }
 
 type AuthenticateUserDTO struct {

@@ -161,8 +161,9 @@ func (c *UserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*UserRespon
 	return decodeUser(resp)
 }
 
-func (c *UserClient) FindByEmail(ctx context.Context, email string) (*UserResponse, error) {
+func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserResponse, error) {
 	endpoint, err := url.JoinPath(c.baseURL, "users", "by-email")
+
 	if err != nil {
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}

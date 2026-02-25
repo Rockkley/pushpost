@@ -2,7 +2,7 @@ package http
 
 import (
 	"encoding/json"
-	"fmt"
+	"errors"
 	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
 	"github.com/rockkley/pushpost/services/user_service/internal/mapper"
@@ -49,7 +49,7 @@ func (h *UserHandler) AuthenticateUser(w http.ResponseWriter, r *http.Request) e
 
 		return err
 	}
-	fmt.Println(req)
+
 	if err := req.Validate(); err != nil {
 		return err
 	}
@@ -57,6 +57,23 @@ func (h *UserHandler) AuthenticateUser(w http.ResponseWriter, r *http.Request) e
 	mappedDTO := mapper.AuthUserFromRequestToUseCase(req)
 
 	user, err := h.userUseCase.AuthenticateUser(r.Context(), *mappedDTO)
+
+	if err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, user)
+
+}
+
+func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) error {
+	email := r.Header.Get("X-User-Email")
+
+	if email == "" {
+		return errors.New("email query parameter is required")
+	}
+
+	user, err := h.userUseCase.GetUserByEmail(r.Context(), email)
 
 	if err != nil {
 		return err
