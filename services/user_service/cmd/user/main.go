@@ -21,8 +21,14 @@ import (
 )
 
 func main() {
-	if err := godotenv.Load("services/user_service/.env"); err != nil {
-		log.Println("no .env file found, using environment variables")
+	envFile := os.Getenv("ENV_FILE")
+	if envFile == "" {
+		envFile = ".env"
+	}
+
+	if err := godotenv.Load(envFile); err != nil {
+		log.Printf("no env file %q found, using runtime environment variables", envFile)
+
 	}
 
 	cfg, err := config.Load()
@@ -30,7 +36,7 @@ func main() {
 		log.Fatal("failed to load config:", err)
 	}
 
-	logger := newLogger("development")
+	logger := newLogger(os.Getenv("APP_ENV"))
 	slog.SetDefault(logger)
 
 	db, err := database.Connect(database.Config{
