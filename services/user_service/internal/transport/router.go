@@ -18,7 +18,7 @@ func NewRouter(log *slog.Logger, userHandler *myHTTP.UserHandler) *chi.Mux {
 	r.Use(cors.Handler(cors.Options{ // FIXME
 		AllowedOrigins:   []string{"http://localhost:63342"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "X-User-Email"},
 		AllowCredentials: false,
 		MaxAge:           300,
 	}))

@@ -67,7 +67,7 @@ func (h *UserHandler) AuthenticateUser(w http.ResponseWriter, r *http.Request) e
 }
 
 func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) error {
-	email := r.Header.Get("X-User-Email")
+	email := r.URL.Query().Get("email")
 
 	if email == "" {
 		return errors.New("email query parameter is required")

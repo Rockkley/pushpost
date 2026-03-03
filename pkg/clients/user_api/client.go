@@ -172,7 +172,9 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserRes
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
-	req.Header.Set("X-User-Email", email)
+	q := req.URL.Query()
+	q.Set("email", email)
+	req.URL.RawQuery = q.Encode()
 
 	resp, err := c.client.Do(req)
 	if err != nil {
