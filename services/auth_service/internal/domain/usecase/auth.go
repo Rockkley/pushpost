@@ -68,7 +68,7 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 
 	user, err := s.userClient.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		// Do not log the email — it is PII and must not appear in production logs.
+
 		log.Debug("login attempt: user not found")
 		return "", apperror.InvalidCredentials()
 	}
