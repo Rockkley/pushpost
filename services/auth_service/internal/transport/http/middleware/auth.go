@@ -2,10 +2,10 @@ package middleware
 
 import (
 	"context"
+	"github.com/rockkley/pushpost/services/common/httperror"
 	"net/http"
 	"strings"
 
-	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/common/apperror"
 )

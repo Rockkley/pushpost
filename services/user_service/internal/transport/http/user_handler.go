@@ -3,7 +3,7 @@ package http
 import (
 	"encoding/json"
 	"errors"
-	"github.com/rockkley/pushpost/internal/handler/httperror"
+	"github.com/rockkley/pushpost/services/common/httperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
 	"github.com/rockkley/pushpost/services/user_service/internal/mapper"
 	"github.com/rockkley/pushpost/services/user_service/internal/transport/http/dto"

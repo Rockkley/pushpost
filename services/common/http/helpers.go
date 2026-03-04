@@ -1,7 +1,7 @@
 package http
 
 import (
-	"github.com/rockkley/pushpost/internal/handler/httperror"
+	"github.com/rockkley/pushpost/services/common/httperror"
 	"net/http"
 )
 

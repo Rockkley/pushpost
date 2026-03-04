@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/internal/handler/http/middleware"
-	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/internal/service"
+	"github.com/rockkley/pushpost/services/common/httperror"
 	"github.com/rockkley/pushpost/services/friendship/transport/http/dto"
 	"net/http"
 )

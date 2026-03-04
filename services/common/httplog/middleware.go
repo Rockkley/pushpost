@@ -1,12 +1,12 @@
 package httplog
 
 import (
+	"github.com/rockkley/pushpost/services/common/ctxlog"
 	"log/slog"
 	"net/http"
 	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/rockkley/pushpost/pkg/ctxlog"
 )
 
 func Logger(base *slog.Logger) func(http.Handler) http.Handler {

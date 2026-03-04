@@ -1,13 +1,13 @@
 package transport
 
 import (
+	handlerhttp "github.com/rockkley/pushpost/services/common/http"
+	"github.com/rockkley/pushpost/services/common/httplog"
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	handlerhttp "github.com/rockkley/pushpost/internal/handler/http"
-	"github.com/rockkley/pushpost/pkg/httplog"
 	myHTTP "github.com/rockkley/pushpost/services/user_service/internal/transport/http"
 )
 

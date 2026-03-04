@@ -1,10 +1,9 @@
 package logger
 
 import (
+	"github.com/rockkley/pushpost/services/common/logger/handlers/slogpretty"
 	"log/slog"
 	"os"
-
-	"github.com/rockkley/pushpost/pkg/logger/handlers/slogpretty"
 )
 
 func SetupLogger(env string) *slog.Logger {

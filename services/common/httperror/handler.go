@@ -3,10 +3,10 @@ package httperror
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rockkley/pushpost/services/common/ctxlog"
 	"log/slog"
 	"net/http"
 
-	"github.com/rockkley/pushpost/pkg/ctxlog"
 	"github.com/rockkley/pushpost/services/common/apperror"
 )
 

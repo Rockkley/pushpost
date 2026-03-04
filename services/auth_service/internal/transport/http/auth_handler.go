@@ -3,11 +3,11 @@ package http
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/internal/handler/httperror"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
 	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common/httperror"
 	"net/http"
 )
 
