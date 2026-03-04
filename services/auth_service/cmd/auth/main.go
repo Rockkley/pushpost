@@ -4,21 +4,23 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	stdlog "log"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/joho/godotenv"
 	"github.com/rockkley/pushpost/pkg/clients/user_api"
 	"github.com/rockkley/pushpost/pkg/jwt"
+	"github.com/rockkley/pushpost/pkg/logger"
 	"github.com/rockkley/pushpost/services/auth_service/internal/config"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain/usecase"
 	"github.com/rockkley/pushpost/services/auth_service/internal/repository/memory"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport"
 	myHTTP "github.com/rockkley/pushpost/services/auth_service/internal/transport/http"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
-	"log"
-	"log/slog"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 func main() {
@@ -26,27 +28,23 @@ func main() {
 	if envFile == "" {
 		envFile = ".env"
 	}
-
 	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("no env file %q found, using runtime environment variables", envFile)
-
+		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
-
 	if err != nil {
-		log.Fatal("failed to load config:", err)
+		stdlog.Fatal("failed to load config:", err)
 	}
 
-	logger := newLogger(os.Getenv("APP_ENV"))
-	slog.SetDefault(logger)
+	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
+	slog.SetDefault(appLog)
 
 	userClient, err := user_api.NewUserClient(cfg.UserSvc.BaseURL, &http.Client{
 		Timeout: cfg.UserSvc.Timeout,
 	})
-
 	if err != nil {
-		logger.Error("failed to create user client", slog.Any("error", err))
+		appLog.Error("failed to create user client", slog.Any("error", err))
 		os.Exit(1)
 	}
 
@@ -55,7 +53,7 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, jwtManager)
 	authHandler := myHTTP.NewAuthHandler(authUsecase)
 	authMiddleware := middleware.NewAuthMiddleware(authUsecase)
-	mux := transport.NewRouter(logger, authMiddleware, authHandler)
+	mux := transport.NewRouter(appLog, authMiddleware, authHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
@@ -66,7 +64,7 @@ func main() {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		logger.Info("auth service started", slog.String("port", cfg.HTTP.Port))
+		appLog.Info("auth service started", slog.String("port", cfg.HTTP.Port))
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -77,30 +75,19 @@ func main() {
 
 	select {
 	case err := <-serverErr:
-		logger.Error("server failed to start", slog.Any("error", err))
+		appLog.Error("server failed to start", slog.Any("error", err))
 		os.Exit(1)
 	case <-quit:
-		logger.Info("auth service shutting down...")
+		appLog.Info("auth service shutting down...")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()
 
 	if err = srv.Shutdown(ctx); err != nil {
-		logger.Error("graceful shutdown failed", slog.Any("error", err))
+		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	logger.Info("auth service stopped")
-}
-
-func newLogger(env string) *slog.Logger {
-	switch env {
-	case "production":
-		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	case "development":
-		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	default: // local
-		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	}
+	appLog.Info("auth service stopped")
 }

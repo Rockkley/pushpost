@@ -3,9 +3,11 @@ package httperror
 import (
 	"encoding/json"
 	"errors"
-	"github.com/rockkley/pushpost/services/common/apperror"
 	"log/slog"
 	"net/http"
+
+	"github.com/rockkley/pushpost/pkg/ctxlog"
+	"github.com/rockkley/pushpost/services/common/apperror"
 )
 
 type ErrorResponse struct {
@@ -15,49 +17,47 @@ type ErrorResponse struct {
 }
 
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {
+	log := ctxlog.From(r.Context())
+
 	var appErr apperror.AppError
 	if errors.As(err, &appErr) {
-		handleAppError(w, r, appErr)
+		handleAppError(w, log, appErr)
 		return
 	}
 
-	slog.Error("unexpected error",
-		slog.Any("error", err),
-		slog.String("path", r.URL.Path),
-		slog.String("method", r.Method),
-	)
-
-	_ = WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
+	log.Error("unhandled error", slog.Any("error", err))
+	WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
 }
 
-func handleAppError(w http.ResponseWriter, r *http.Request, appErr apperror.AppError) {
-	var fieldErrors interface {
-		Fields() map[string]string
-	}
+func handleAppError(w http.ResponseWriter, log *slog.Logger, appErr apperror.AppError) {
 	switch appErr.Type() {
+
 	case apperror.ErrorTypeClient, apperror.ErrorTypeValidation:
-		slog.Debug("clients error",
+		log.Debug("client error",
 			slog.String("code", appErr.Code()),
 			slog.String("field", appErr.Field()),
-			slog.String("path", r.URL.Path),
+			slog.Int("status", appErr.HTTPStatus()),
 		)
-		response := ErrorResponse{
-			Code:  appErr.Code(),
-			Field: appErr.Field(),
+		resp := ErrorResponse{Code: appErr.Code(), Field: appErr.Field()}
+		if appErr.Fields() != nil {
+			resp.Fields = appErr.Fields()
 		}
-		if errors.As(appErr, &fieldErrors) {
-			response.Fields = fieldErrors.Fields()
-		}
-		_ = WriteJSON(w, appErr.HTTPStatus(), response)
+		WriteJSON(w, appErr.HTTPStatus(), resp)
+
 	case apperror.ErrorTypeServer:
-		slog.Error("server error",
-			slog.Any("error", appErr),
-			slog.Any("cause", appErr.Unwrap()),
+		log.Error("server error",
 			slog.String("code", appErr.Code()),
-			slog.String("path", r.URL.Path),
-			slog.String("method", r.Method),
+			slog.Any("cause", appErr.Unwrap()),
 		)
-		_ = WriteJSON(w, appErr.HTTPStatus(), ErrorResponse{Code: appErr.Code()})
+		WriteJSON(w, appErr.HTTPStatus(), ErrorResponse{Code: appErr.Code()})
+
+	default:
+		log.Error("unhandled apperror type",
+			slog.Int("type", int(appErr.Type())),
+			slog.String("code", appErr.Code()),
+			slog.Any("error", appErr),
+		)
+		WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
 	}
 }
 

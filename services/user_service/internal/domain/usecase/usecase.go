@@ -2,13 +2,15 @@ package usecase
 
 import (
 	"context"
+	"log/slog"
+
 	"github.com/google/uuid"
+
+	"github.com/rockkley/pushpost/pkg/ctxlog"
 	"github.com/rockkley/pushpost/services/common/apperror"
-	"github.com/rockkley/pushpost/services/user_service/internal/ctxlog"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"github.com/rockkley/pushpost/services/user_service/internal/repository"
-	"log/slog"
 )
 
 type UserUseCase struct {
@@ -19,11 +21,10 @@ func NewUserUseCase(repo repository.UserRepository) *UserUseCase {
 	return &UserUseCase{repo: repo}
 }
 
-func (u *UserUseCase) AuthenticateUser(ctx context.Context, dto dto.AuthenticateUserRequestDTO) (*entity.User, error) {
+func (u *UserUseCase) AuthenticateUser(ctx context.Context, req dto.AuthenticateUserRequestDTO) (*entity.User, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.AuthenticateUser"))
 
-	user, err := u.repo.GetUserByEmail(ctx, dto.Email)
-
+	user, err := u.repo.GetUserByEmail(ctx, req.Email)
 	if err != nil {
 		log.Debug("user not found by email")
 		return nil, apperror.InvalidCredentials()
@@ -34,27 +35,22 @@ func (u *UserUseCase) AuthenticateUser(ctx context.Context, dto dto.Authenticate
 		return nil, apperror.InvalidCredentials()
 	}
 
-	//if err = validator.ValidatePassword(password); err != nil {
-	//
-	//	return nil, apperror.InvalidCredentials()
-	//}
-
 	return user, nil
 }
 
-func (u *UserUseCase) CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*entity.User, error) {
+func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*entity.User, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.CreateUser"))
 
-	if err := dto.Validate(); err != nil {
+	if err := req.Validate(); err != nil {
 		log.Debug("dto validation failed", slog.Any("error", err))
 		return nil, err
 	}
 
 	user := &entity.User{
 		Id:           uuid.New(),
-		Username:     dto.Username,
-		Email:        dto.Email,
-		PasswordHash: dto.PasswordHash,
+		Username:     req.Username,
+		Email:        req.Email,
+		PasswordHash: req.PasswordHash,
 	}
 
 	if err := u.repo.Create(ctx, user); err != nil {
@@ -67,10 +63,9 @@ func (u *UserUseCase) CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*e
 }
 
 func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.FindUserByEmail"))
+	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.GetUserByEmail"))
 
 	user, err := u.repo.GetUserByEmail(ctx, email)
-
 	if err != nil {
 		log.Debug("user not found by email")
 		return nil, apperror.NotFound(apperror.CodeUserNotFound, "user not found")

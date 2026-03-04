@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	stdlog "log"
 	"log/slog"
 	"net/http"
 	"os"
@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"github.com/rockkley/pushpost/pkg/logger"
 	"github.com/rockkley/pushpost/services/common/database"
 	"github.com/rockkley/pushpost/services/user_service/internal/config"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/usecase"
@@ -25,19 +26,17 @@ func main() {
 	if envFile == "" {
 		envFile = ".env"
 	}
-
 	if err := godotenv.Load(envFile); err != nil {
-		log.Printf("no env file %q found, using runtime environment variables", envFile)
-
+		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatal("failed to load config:", err)
+		stdlog.Fatal("failed to load config:", err)
 	}
 
-	logger := newLogger(os.Getenv("APP_ENV"))
-	slog.SetDefault(logger)
+	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
+	slog.SetDefault(appLog)
 
 	db, err := database.Connect(database.Config{
 		URL:          cfg.Database.URL,
@@ -45,7 +44,7 @@ func main() {
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
 	if err != nil {
-		logger.Error("failed to connect to database", slog.Any("error", err))
+		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer db.Close()
@@ -53,7 +52,7 @@ func main() {
 	userRepo := postgres.NewUserRepository(db)
 	userUseCase := usecase.NewUserUseCase(userRepo)
 	userHandler := myHTTP.NewUserHandler(userUseCase)
-	mux := transport.NewRouter(logger, userHandler)
+	mux := transport.NewRouter(appLog, userHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
@@ -64,7 +63,7 @@ func main() {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		logger.Info("user service started", slog.String("port", cfg.HTTP.Port))
+		appLog.Info("user service started", slog.String("port", cfg.HTTP.Port))
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -75,30 +74,19 @@ func main() {
 
 	select {
 	case err := <-serverErr:
-		logger.Error("server failed to start", slog.Any("error", err))
+		appLog.Error("server failed to start", slog.Any("error", err))
 		os.Exit(1)
 	case <-quit:
-		logger.Info("user service shutting down...")
+		appLog.Info("user service shutting down...")
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer cancel()
 
 	if err = srv.Shutdown(ctx); err != nil {
-		logger.Error("graceful shutdown failed", slog.Any("error", err))
+		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	logger.Info("user service stopped")
-}
-
-func newLogger(env string) *slog.Logger {
-	switch env {
-	case "production":
-		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo}))
-	case "development":
-		return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	default: // local
-		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug}))
-	}
+	appLog.Info("user service stopped")
 }

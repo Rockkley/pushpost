@@ -2,18 +2,19 @@ package usecase
 
 import (
 	"context"
-	"fmt"
-	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/pkg/clients/user_api"
-	"github.com/rockkley/pushpost/pkg/jwt"
-	passwordTools "github.com/rockkley/pushpost/pkg/password"
-	"github.com/rockkley/pushpost/services/auth_service/internal/ctxlog"
-	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
-	"github.com/rockkley/pushpost/services/auth_service/internal/repository"
-	dto2 "github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
-	"github.com/rockkley/pushpost/services/common/apperror"
 	"log/slog"
 	"time"
+
+	"github.com/google/uuid"
+
+	"github.com/rockkley/pushpost/pkg/clients/user_api"
+	"github.com/rockkley/pushpost/pkg/ctxlog"
+	"github.com/rockkley/pushpost/pkg/jwt"
+	passwordTools "github.com/rockkley/pushpost/pkg/password"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
+	"github.com/rockkley/pushpost/services/auth_service/internal/repository"
+	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
+	"github.com/rockkley/pushpost/services/common/apperror"
 )
 
 type AuthUsecase struct {
@@ -25,79 +26,60 @@ type AuthUsecase struct {
 func NewAuthUsecase(
 	userClient user_api.Client,
 	sessionStore repository.SessionStore,
-	jwtManager *jwt.Manager) *AuthUsecase {
+	jwtManager *jwt.Manager,
+) *AuthUsecase {
 	return &AuthUsecase{
 		userClient:   userClient,
 		sessionStore: sessionStore,
-		jwtManager:   jwtManager}
+		jwtManager:   jwtManager,
+	}
 }
 
-func (s *AuthUsecase) Register(ctx context.Context, data dto2.RegisterUserDto) (*dto2.RegisterResponseDto, error) {
-	log := ctxlog.From(ctx).With(slog.String("method", "AuthUsecase.Register"))
-	hash, err := passwordTools.Hash(data.Password)
+func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*dto.RegisterResponseDto, error) {
+	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Register"))
 
+	hash, err := passwordTools.Hash(data.Password)
 	if err != nil {
 		log.Error("failed to hash password", slog.Any("error", err))
-
 		return nil, apperror.Internal("failed to hash password", err)
 	}
 
-	req := user_api.CreateUserRequest{
+	created, err := s.userClient.CreateUser(ctx, user_api.CreateUserRequest{
 		Username:     data.Username,
 		Email:        data.Email,
 		PasswordHash: hash,
-	}
-
-	createdResponse, err := s.userClient.CreateUser(ctx, req)
-
+	})
 	if err != nil {
 		log.Warn("user creation failed", slog.Any("error", err))
-
 		return nil, err
 	}
 
-	log.Info("user registered", slog.String("user_id", createdResponse.ID.String()))
+	log.Info("user registered", slog.String("user_id", created.ID.String()))
 
-	return &dto2.RegisterResponseDto{
-		ID:       createdResponse.ID,
-		Username: createdResponse.Username,
-		Email:    createdResponse.Email,
+	return &dto.RegisterResponseDto{
+		ID:       created.ID,
+		Username: created.Username,
+		Email:    created.Email,
 	}, nil
 }
 
-func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string, error) {
+func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Login"))
 
-	user, err := s.userClient.GetUserByEmail(ctx, dto.Email)
-
+	user, err := s.userClient.GetUserByEmail(ctx, req.Email)
 	if err != nil {
-		log.Warn("user not found by email", slog.String("email", dto.Email))
+		// Do not log the email — it is PII and must not appear in production logs.
+		log.Debug("login attempt: user not found")
 		return "", apperror.InvalidCredentials()
 	}
 
-	//if user.IsDeleted() {
-	//	log.Warn("auth attempt on deleted account", slog.String("user_id", user.ID.String()))
-	//	return "", apperror.InvalidCredentials()
-	//}
-
-	if err = passwordTools.Compare(dto.Password, user.PasswordHash); err != nil {
-		log.Debug("password mismatch for user", slog.String("user_id", user.ID.String()))
-
+	if err = passwordTools.Compare(req.Password, user.PasswordHash); err != nil {
+		log.Debug("login attempt: password mismatch", slog.String("user_id", user.ID.String()))
 		return "", apperror.InvalidCredentials()
 	}
 
-	authUser, err := s.userClient.AuthenticateUser(ctx, dto.Email, dto.Password) // fix me
-	if err != nil {
-		log.Warn("authentication failed", slog.Any("error", err))
-
-		return "", err
-	}
-
-	//if s.userClient.IsDeleted(ctx, user.Id) {
-	//	return "", apperror.AccountDeleted() // TODO think of a good way to check it, comment out for now just for tests
-	//}
-
-	deviceID := dto.DeviceID
+	// ensure deviceID is never nil - generate one if the client didn't supply it.
+	deviceID := req.DeviceID
 	if deviceID == uuid.Nil {
 		deviceID = uuid.New()
 	}
@@ -105,7 +87,7 @@ func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string,
 
 	session := &domain.Session{
 		SessionID: sessionID,
-		UserID:    authUser.ID,
+		UserID:    user.ID,
 		DeviceID:  deviceID,
 		Expires:   time.Now().Add(24 * time.Hour).Unix(),
 	}
@@ -115,14 +97,21 @@ func (s *AuthUsecase) Login(ctx context.Context, dto dto2.LoginUserDTO) (string,
 		return "", apperror.Internal("failed to create session", err)
 	}
 
-	token, err := s.jwtManager.Generate(authUser.ID, dto.DeviceID, sessionID)
+	token, err := s.jwtManager.Generate(user.ID, deviceID, sessionID)
 	if err != nil {
+		// session was already persisted - clean it up so it doesn't become orphaned
+		if delErr := s.sessionStore.Delete(ctx, sessionID); delErr != nil {
+			log.Error("failed to delete orphaned session after token error",
+				slog.String("session_id", sessionID.String()),
+				slog.Any("error", delErr),
+			)
+		}
 		log.Error("failed to generate token", slog.Any("error", err))
 		return "", apperror.Internal("failed to generate token", err)
 	}
 
 	log.Info("user logged in",
-		slog.String("user_id", authUser.ID.String()),
+		slog.String("user_id", user.ID.String()),
 		slog.String("session_id", sessionID.String()),
 		slog.String("device_id", deviceID.String()),
 	)
@@ -138,10 +127,9 @@ func (s *AuthUsecase) Logout(ctx context.Context, sessionID uuid.UUID) error {
 
 	session, err := s.sessionStore.Get(ctx, sessionID)
 	if err != nil {
-		log.Debug(fmt.Sprintf(
-			"session_id (%s) not found during logout, treating as already logged out", sessionID.String()),
+		// not an error - session may have already expired or been deleted
+		log.Debug("session not found during logout, treating as already logged out",
 			slog.Any("error", err))
-
 		return nil
 	}
 
@@ -151,16 +139,7 @@ func (s *AuthUsecase) Logout(ctx context.Context, sessionID uuid.UUID) error {
 	}
 
 	log.Info("user logged out", slog.String("user_id", session.UserID.String()))
-
 	return nil
-}
-
-func (s *AuthUsecase) GetSession(ctx context.Context, sessionID uuid.UUID) (*domain.Session, error) {
-	session, err := s.sessionStore.Get(ctx, sessionID)
-	if err != nil {
-		return nil, err
-	}
-	return session, nil
 }
 
 func (s *AuthUsecase) AuthenticateRequest(ctx context.Context, tokenStr string) (*domain.Session, error) {
@@ -183,7 +162,8 @@ func (s *AuthUsecase) AuthenticateRequest(ctx context.Context, tokenStr string) 
 		log.Warn("invalid session id in token", slog.String("sid", sessionIDStr))
 		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid session id format")
 	}
-	session, err := s.GetSession(ctx, sessionID)
+
+	session, err := s.sessionStore.Get(ctx, sessionID)
 	if err != nil {
 		log.Debug("session not found", slog.String("session_id", sessionID.String()))
 		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "session not found")
@@ -200,15 +180,3 @@ func (s *AuthUsecase) AuthenticateRequest(ctx context.Context, tokenStr string) 
 
 	return session, nil
 }
-
-//func (s *AuthUsecase) extractTokenClaims() todo?
-//func (s *AuthUsecase) ValidateTokenStructure(tokenStr string) (tokenID string, err error) {
-//	claims, err := s.jwtManager.Parse(tokenStr)
-//	if err != nil {
-//		return "", fmt.Errorf("invalid token signature: %w", err)
-//	}
-//
-//
-//
-//	return tokenID, nil
-//}

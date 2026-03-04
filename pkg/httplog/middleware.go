@@ -1,4 +1,4 @@
-package middleware
+package httplog
 
 import (
 	"log/slog"
@@ -6,13 +6,13 @@ import (
 	"time"
 
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
-	"github.com/rockkley/pushpost/services/user_service/internal/ctxlog"
+	"github.com/rockkley/pushpost/pkg/ctxlog"
 )
 
-func Logger(log *slog.Logger) func(next http.Handler) http.Handler {
+func Logger(base *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			reqLog := log.With(
+			reqLog := base.With(
 				slog.String("request_id", chimiddleware.GetReqID(r.Context())),
 				slog.String("method", r.Method),
 				slog.String("path", r.URL.Path),
@@ -25,17 +25,23 @@ func Logger(log *slog.Logger) func(next http.Handler) http.Handler {
 
 			next.ServeHTTP(ww, r.WithContext(ctx))
 
+			status := ww.Status()
+			if status == 0 {
+				status = http.StatusOK
+			}
+
 			level := slog.LevelInfo
-			if ww.Status() >= 500 {
+			switch {
+			case status >= 500:
 				level = slog.LevelError
-			} else if ww.Status() >= 400 {
+			case status >= 400:
 				level = slog.LevelWarn
 			}
 
 			reqLog.Log(ctx, level, "request completed",
-				slog.Int("status", ww.Status()),
+				slog.Int("status", status),
 				slog.Int("bytes", ww.BytesWritten()),
-				slog.String("duration", time.Since(start).String()),
+				slog.Duration("duration", time.Since(start)),
 			)
 		})
 	}
