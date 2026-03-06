@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	domaindto "github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"github.com/rockkley/pushpost/services/user_service/internal/repository"
@@ -132,8 +132,8 @@ func TestUserUseCase_CreateUser_ValidationErrors(t *testing.T) {
 		dto  domaindto.CreateUserDTO
 	}{
 		{name: "username empty", dto: domaindto.CreateUserDTO{Email: "e@e.com", PasswordHash: "hash"}},
-		{name: "email empty", dto: domaindto.CreateUserDTO{Username: "user", PasswordHash: "hash"}},
-		{name: "passwordHash empty", dto: domaindto.CreateUserDTO{Username: "user", Email: "e@e.com"}},
+		{name: "email empty", dto: domaindto.CreateUserDTO{Username: "message", PasswordHash: "hash"}},
+		{name: "passwordHash empty", dto: domaindto.CreateUserDTO{Username: "message", Email: "e@e.com"}},
 	}
 
 	for _, tt := range tests {
@@ -154,7 +154,7 @@ func TestUserUseCase_CreateUser_RepositoryError_EmailExists(t *testing.T) {
 
 	uc := NewUserUseCase(repo)
 	_, err := uc.CreateUser(context.Background(), domaindto.CreateUserDTO{
-		Username:     "user",
+		Username:     "message",
 		Email:        "taken@example.com",
 		PasswordHash: "$2a$10$hash",
 	})
@@ -195,7 +195,7 @@ func TestUserUseCase_CreateUser_RepositoryError_DatabaseError(t *testing.T) {
 
 	uc := NewUserUseCase(repo)
 	_, err := uc.CreateUser(context.Background(), domaindto.CreateUserDTO{
-		Username:     "user",
+		Username:     "message",
 		Email:        "u@example.com",
 		PasswordHash: "$2a$10$hash",
 	})
@@ -218,7 +218,7 @@ func TestUserUseCase_CreateUser_GeneratesNewUUID(t *testing.T) {
 	uc := NewUserUseCase(repo)
 	for i := 0; i < 3; i++ {
 		_, err := uc.CreateUser(context.Background(), domaindto.CreateUserDTO{
-			Username:     "user",
+			Username:     "message",
 			Email:        "u@example.com",
 			PasswordHash: "$2a$10$hash",
 		})
@@ -236,14 +236,14 @@ func TestUserUseCase_AuthenticateUser_Success(t *testing.T) {
 	id := uuid.New()
 	repo := &mockUserRepository{
 		getUserByEmailFunc: func(_ context.Context, email string) (*entity.User, error) {
-			require.Equal(t, "user@example.com", email)
+			require.Equal(t, "message@example.com", email)
 			return activeUser(id), nil
 		},
 	}
 
 	uc := NewUserUseCase(repo)
 	result, err := uc.AuthenticateUser(context.Background(), domaindto.AuthenticateUserRequestDTO{
-		Email:        "user@example.com",
+		Email:        "message@example.com",
 		PasswordHash: "$2a$10$hash",
 	})
 
@@ -299,13 +299,13 @@ func TestUserUseCase_GetUserByEmail_Success(t *testing.T) {
 	id := uuid.New()
 	repo := &mockUserRepository{
 		getUserByEmailFunc: func(_ context.Context, email string) (*entity.User, error) {
-			require.Equal(t, "user@example.com", email)
+			require.Equal(t, "message@example.com", email)
 			return activeUser(id), nil
 		},
 	}
 
 	uc := NewUserUseCase(repo)
-	result, err := uc.GetUserByEmail(context.Background(), "user@example.com")
+	result, err := uc.GetUserByEmail(context.Background(), "message@example.com")
 
 	require.NoError(t, err)
 	require.Equal(t, id, result.Id)

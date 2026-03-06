@@ -5,8 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	handlerhttp "github.com/rockkley/pushpost/services/common/http"
-	"github.com/rockkley/pushpost/services/common/httperror"
+	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
+	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,7 +16,7 @@ import (
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/stretchr/testify/require"
 )
 
@@ -107,32 +107,32 @@ func TestAuthHandler_Register_ValidationErrors(t *testing.T) {
 	}{
 		{
 			name:       "username too short",
-			payload:    `{"username":"ab","email":"user@example.com","password":"Password1"}`,
+			payload:    `{"username":"ab","email":"message@example.com","password":"Password1"}`,
 			wantFields: map[string]string{"username": "field_too_short"},
 		},
 		{
 			name:       "username too long",
-			payload:    fmt.Sprintf(`{"username":%q,"email":"user@example.com","password":"Password1"}`, strings.Repeat("a", 31)),
+			payload:    fmt.Sprintf(`{"username":%q,"email":"message@example.com","password":"Password1"}`, strings.Repeat("a", 31)),
 			wantFields: map[string]string{"username": "field_too_long"},
 		},
 		{
 			name:       "username with space",
-			payload:    `{"username":"user name","email":"user@example.com","password":"Password1"}`,
+			payload:    `{"username":"message name","email":"message@example.com","password":"Password1"}`,
 			wantFields: map[string]string{"username": "field_invalid"},
 		},
 		{
 			name:       "username with at-sign",
-			payload:    `{"username":"user@name","email":"user@example.com","password":"Password1"}`,
+			payload:    `{"username":"message@name","email":"message@example.com","password":"Password1"}`,
 			wantFields: map[string]string{"username": "field_invalid"},
 		},
 		{
 			name:       "username with emoji",
-			payload:    `{"username":"user😀","email":"user@example.com","password":"Password1"}`,
+			payload:    `{"username":"message😀","email":"message@example.com","password":"Password1"}`,
 			wantFields: map[string]string{"username": "field_invalid"},
 		},
 		{
 			name:       "username with cyrillic",
-			payload:    `{"username":"пользователь","email":"user@example.com","password":"Password1"}`,
+			payload:    `{"username":"пользователь","email":"message@example.com","password":"Password1"}`,
 			wantFields: map[string]string{"username": "field_invalid"},
 		},
 		{
@@ -147,27 +147,27 @@ func TestAuthHandler_Register_ValidationErrors(t *testing.T) {
 		},
 		{
 			name:       "email invalid — missing TLD",
-			payload:    `{"username":"validuser","email":"user@domain","password":"Password1"}`,
+			payload:    `{"username":"validuser","email":"message@domain","password":"Password1"}`,
 			wantFields: map[string]string{"email": "field_invalid"},
 		},
 		{
 			name:       "password too short",
-			payload:    `{"username":"validuser","email":"user@example.com","password":"Ab1"}`,
+			payload:    `{"username":"validuser","email":"message@example.com","password":"Ab1"}`,
 			wantFields: map[string]string{"password": "field_too_short"},
 		},
 		{
 			name:       "password no digits",
-			payload:    `{"username":"validuser","email":"user@example.com","password":"OnlyLetters"}`,
+			payload:    `{"username":"validuser","email":"message@example.com","password":"OnlyLetters"}`,
 			wantFields: map[string]string{"password": "field_weak"},
 		},
 		{
 			name:       "password no letters",
-			payload:    `{"username":"validuser","email":"user@example.com","password":"12345678"}`,
+			payload:    `{"username":"validuser","email":"message@example.com","password":"12345678"}`,
 			wantFields: map[string]string{"password": "field_weak"},
 		},
 		{
 			name:       "password too long",
-			payload:    fmt.Sprintf(`{"username":"validuser","email":"user@example.com","password":%q}`, strings.Repeat("A1", 65)),
+			payload:    fmt.Sprintf(`{"username":"validuser","email":"message@example.com","password":%q}`, strings.Repeat("A1", 65)),
 			wantFields: map[string]string{"password": "field_too_long"},
 		},
 		{
@@ -204,14 +204,14 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 		registerFunc: func(_ context.Context, req dto.RegisterUserDto) (*dto.RegisterResponseDto, error) {
 			called = true
 			require.Equal(t, "validuser", req.Username)
-			require.Equal(t, "user@example.com", req.Email)
+			require.Equal(t, "message@example.com", req.Email)
 			require.Equal(t, "Password1", req.Password)
-			return &dto.RegisterResponseDto{ID: userID, Username: "validuser", Email: "user@example.com"}, nil
+			return &dto.RegisterResponseDto{ID: userID, Username: "validuser", Email: "message@example.com"}, nil
 		},
 	}
 
 	req := newJSONRequest(t, http.MethodPost, "/register",
-		`{"username":"validuser","email":"user@example.com","password":"Password1"}`)
+		`{"username":"validuser","email":"message@example.com","password":"Password1"}`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(NewAuthHandler(svc).Register).ServeHTTP(resp, req)
@@ -222,17 +222,17 @@ func TestAuthHandler_Register_Success(t *testing.T) {
 	decodeJSONResponse(t, resp, &body)
 	require.Equal(t, userID, body.ID)
 	require.Equal(t, "validuser", body.Username)
-	require.Equal(t, "user@example.com", body.Email)
+	require.Equal(t, "message@example.com", body.Email)
 }
 
 func TestAuthHandler_Register_NoPasswordInResponse(t *testing.T) {
 	svc := &mockAuthUsecase{
 		registerFunc: func(_ context.Context, _ dto.RegisterUserDto) (*dto.RegisterResponseDto, error) {
-			return &dto.RegisterResponseDto{ID: uuid.New(), Username: "user", Email: "u@e.com"}, nil
+			return &dto.RegisterResponseDto{ID: uuid.New(), Username: "message", Email: "u@e.com"}, nil
 		},
 	}
 	req := newJSONRequest(t, http.MethodPost, "/register",
-		`{"username":"validuser","email":"user@example.com","password":"Password1"}`)
+		`{"username":"validuser","email":"message@example.com","password":"Password1"}`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(NewAuthHandler(svc).Register).ServeHTTP(resp, req)
@@ -283,7 +283,7 @@ func TestAuthHandler_Register_ServiceErrors(t *testing.T) {
 				},
 			}
 			req := newJSONRequest(t, http.MethodPost, "/register",
-				`{"username":"validuser","email":"user@example.com","password":"Password1"}`)
+				`{"username":"validuser","email":"message@example.com","password":"Password1"}`)
 			resp := httptest.NewRecorder()
 
 			handlerhttp.MakeHandler(NewAuthHandler(svc).Register).ServeHTTP(resp, req)
@@ -332,14 +332,14 @@ func TestAuthHandler_Login_Success_WithDeviceID(t *testing.T) {
 	svc := &mockAuthUsecase{
 		loginFunc: func(_ context.Context, req dto.LoginUserDTO) (string, error) {
 			called = true
-			require.Equal(t, "user@example.com", req.Email)
+			require.Equal(t, "message@example.com", req.Email)
 			require.Equal(t, "Password1", req.Password)
 			require.Equal(t, deviceID, req.DeviceID)
 			return "jwt.token.value", nil
 		},
 	}
 
-	payload := fmt.Sprintf(`{"email":"user@example.com","password":"Password1","deviceID":%q}`, deviceID)
+	payload := fmt.Sprintf(`{"email":"message@example.com","password":"Password1","deviceID":%q}`, deviceID)
 	req := newJSONRequest(t, http.MethodPost, "/login", payload)
 	resp := httptest.NewRecorder()
 
@@ -363,7 +363,7 @@ func TestAuthHandler_Login_Success_WithoutDeviceID(t *testing.T) {
 	}
 
 	req := newJSONRequest(t, http.MethodPost, "/login",
-		`{"email":"user@example.com","password":"Password1"}`)
+		`{"email":"message@example.com","password":"Password1"}`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(NewAuthHandler(svc).Login).ServeHTTP(resp, req)
@@ -407,7 +407,7 @@ func TestAuthHandler_Login_ServiceErrors(t *testing.T) {
 				},
 			}
 			req := newJSONRequest(t, http.MethodPost, "/login",
-				`{"email":"user@example.com","password":"Password1"}`)
+				`{"email":"message@example.com","password":"Password1"}`)
 			resp := httptest.NewRecorder()
 
 			handlerhttp.MakeHandler(NewAuthHandler(svc).Login).ServeHTTP(resp, req)
@@ -468,7 +468,7 @@ func TestAuthHandler_Logout_Success(t *testing.T) {
 	require.Equal(t, http.StatusOK, resp.Code)
 	var body map[string]string
 	decodeJSONResponse(t, resp, &body)
-	require.Equal(t, "logged out successfully", body["message"])
+	require.Equal(t, "logged out successfully", body["message_service"])
 }
 
 func TestAuthHandler_Logout_ServiceErrors(t *testing.T) {

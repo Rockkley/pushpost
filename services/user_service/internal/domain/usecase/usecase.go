@@ -2,12 +2,12 @@ package usecase
 
 import (
 	"context"
-	"github.com/rockkley/pushpost/services/common/ctxlog"
+	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"log/slog"
 
 	"github.com/google/uuid"
 
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"github.com/rockkley/pushpost/services/user_service/internal/repository"

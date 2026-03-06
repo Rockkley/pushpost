@@ -5,8 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rockkley/pushpost/clients/user_api"
-	"github.com/rockkley/pushpost/services/common/jwt"
-	"github.com/rockkley/pushpost/services/common/logger"
+	"github.com/rockkley/pushpost/services/common_service/jwt"
+	"github.com/rockkley/pushpost/services/common_service/logger"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -25,14 +25,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -43,6 +46,7 @@ func main() {
 	userClient, err := user_api.NewUserClient(cfg.UserSvc.BaseURL, &http.Client{
 		Timeout: cfg.UserSvc.Timeout,
 	})
+
 	if err != nil {
 		appLog.Error("failed to create user client", slog.Any("error", err))
 		os.Exit(1)

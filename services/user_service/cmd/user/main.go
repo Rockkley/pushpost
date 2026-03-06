@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rockkley/pushpost/services/common/logger"
+	"github.com/rockkley/pushpost/services/common_service/logger"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	"github.com/rockkley/pushpost/services/common/database"
+	"github.com/rockkley/pushpost/services/common_service/database"
 	"github.com/rockkley/pushpost/services/user_service/internal/config"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/usecase"
 	"github.com/rockkley/pushpost/services/user_service/internal/repository/postgres"

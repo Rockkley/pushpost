@@ -53,7 +53,7 @@ func TestSessionStore_Save_OverwritesExistingSession(t *testing.T) {
 	first := newSession(sessionID, uuid.New())
 	require.NoError(t, store.Save(ctx, first))
 
-	second := newSession(sessionID, uuid.New()) // same session ID, different user
+	second := newSession(sessionID, uuid.New()) // same session ID, different message
 	require.NoError(t, store.Save(ctx, second))
 
 	got, err := store.Get(ctx, sessionID)

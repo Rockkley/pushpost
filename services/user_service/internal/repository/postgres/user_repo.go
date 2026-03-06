@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"strings"
 	"time"

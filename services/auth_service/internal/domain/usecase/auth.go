@@ -3,9 +3,9 @@ package usecase
 import (
 	"context"
 	user_api2 "github.com/rockkley/pushpost/clients/user_api"
-	"github.com/rockkley/pushpost/services/common/ctxlog"
-	"github.com/rockkley/pushpost/services/common/jwt"
-	passwordTools "github.com/rockkley/pushpost/services/common/password"
+	"github.com/rockkley/pushpost/services/common_service/ctxlog"
+	"github.com/rockkley/pushpost/services/common_service/jwt"
+	passwordTools "github.com/rockkley/pushpost/services/common_service/password"
 	"log/slog"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/auth_service/internal/repository"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 )
 
 type AuthUsecase struct {
@@ -39,8 +39,10 @@ func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*
 	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Register"))
 
 	hash, err := passwordTools.Hash(data.Password)
+
 	if err != nil {
 		log.Error("failed to hash password", slog.Any("error", err))
+
 		return nil, apperror.Internal("failed to hash password", err)
 	}
 
@@ -49,8 +51,10 @@ func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*
 		Email:        data.Email,
 		PasswordHash: hash,
 	})
+
 	if err != nil {
 		log.Warn("user creation failed", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -67,9 +71,10 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Login"))
 
 	user, err := s.userClient.GetUserByEmail(ctx, req.Email)
+
 	if err != nil {
 
-		log.Debug("login attempt: user not found")
+		log.Debug("login attempt: message not found")
 		return "", apperror.InvalidCredentials()
 	}
 

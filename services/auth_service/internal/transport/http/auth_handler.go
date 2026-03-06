@@ -6,8 +6,8 @@ import (
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
-	"github.com/rockkley/pushpost/services/common/apperror"
-	"github.com/rockkley/pushpost/services/common/httperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 )
 
@@ -86,6 +86,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{
-		"message": "logged out successfully",
+		"auth_service": "logged out successfully",
 	})
 }

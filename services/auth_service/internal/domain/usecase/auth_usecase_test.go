@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	user_api2 "github.com/rockkley/pushpost/clients/user_api"
-	jwtpkg "github.com/rockkley/pushpost/services/common/jwt"
+	jwtpkg "github.com/rockkley/pushpost/services/common_service/jwt"
 	"testing"
 	"time"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	authrep "github.com/rockkley/pushpost/services/auth_service/internal/repository"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/stretchr/testify/require"
 )
 
@@ -167,7 +167,7 @@ func TestAuthUsecase_Register_PasswordIsHashedBeforeSend(t *testing.T) {
 	})
 
 	require.NoError(t, err)
-	require.NotEqual(t, plainPwd, capturedHash, "plain password must not be sent to user service")
+	require.NotEqual(t, plainPwd, capturedHash, "plain password must not be sent to message service")
 	require.NoError(t, bcrypt.CompareHashAndPassword([]byte(capturedHash), []byte(plainPwd)))
 }
 
@@ -180,15 +180,15 @@ func TestAuthUsecase_Login_Success(t *testing.T) {
 
 	client := &mockUserClient{
 		getUserByEmailFunc: func(_ context.Context, email string) (*user_api2.UserResponse, error) {
-			require.Equal(t, "user@example.com", email)
-			return &user_api2.UserResponse{ID: userID, Username: "user", Email: email, PasswordHash: hash}, nil
+			require.Equal(t, "message@example.com", email)
+			return &user_api2.UserResponse{ID: userID, Username: "message", Email: email, PasswordHash: hash}, nil
 		},
 	}
 	store := &mockSessionStore{}
 
 	uc := newTestUsecase(client, store)
 	token, err := uc.Login(context.Background(), dto.LoginUserDTO{
-		Email:    "user@example.com",
+		Email:    "message@example.com",
 		Password: "Password1",
 		DeviceID: deviceID,
 	})
@@ -228,7 +228,7 @@ func TestAuthUsecase_Login_GeneratesDeviceIDWhenNil(t *testing.T) {
 func TestAuthUsecase_Login_UserNotFound(t *testing.T) {
 	client := &mockUserClient{
 		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
-			return nil, errors.New("user not found")
+			return nil, errors.New("message not found")
 		},
 	}
 

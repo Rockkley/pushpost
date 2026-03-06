@@ -1,8 +1,8 @@
 package transport
 
 import (
-	handlerhttp "github.com/rockkley/pushpost/services/common/http"
-	"github.com/rockkley/pushpost/services/common/httplog"
+	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
+	"github.com/rockkley/pushpost/services/common_service/httplog"
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"

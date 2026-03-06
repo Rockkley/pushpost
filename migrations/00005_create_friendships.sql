@@ -1,7 +1,6 @@
 -- +goose Up
 -- +goose StatementBegin
 
--- Таблица для подтверждённой дружбы
 CREATE TABLE friendships
 (
     id         UUID PRIMARY KEY,

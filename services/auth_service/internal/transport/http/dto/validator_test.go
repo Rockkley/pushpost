@@ -50,16 +50,16 @@ func TestValidateUsername_TooLong(t *testing.T) {
 
 func TestValidateUsername_InvalidCharacters(t *testing.T) {
 	invalid := []string{
-		"user name",    // space
-		"user@name",    // @
-		"user-name",    // hyphen
-		"user.name",    // dot
-		"user!",        // exclamation
-		"пользователь", // cyrillic
-		"用户名",          // Chinese
-		"user😀",        // emoji
-		"user\tname",   // tab
-		"user\nname",   // newline
+		"message name",  // space
+		"message@name",  // @
+		"message-name",  // hyphen
+		"message.name",  // dot
+		"message!",      // exclamation
+		"пользователь",  // cyrillic
+		"用户名",           // Chinese
+		"message😀",      // emoji
+		"message\tname", // tab
+		"message\nname", // newline
 	}
 
 	for _, u := range invalid {
@@ -85,12 +85,12 @@ func TestValidateUsername_BoundaryLengths(t *testing.T) {
 
 func TestValidateEmail_Valid(t *testing.T) {
 	valid := []string{
-		"user@example.com",
+		"message@example.com",
 		"USER@EXAMPLE.COM",
-		"user+tag@example.co.uk",
-		"user.name@sub.domain.org",
+		"message+tag@example.co.uk",
+		"message.name@sub.domain.org",
 		"u@e.io",
-		"  user@example.com  ", // trimmed by validator
+		"  message@example.com  ", // trimmed by validator
 	}
 
 	for _, e := range valid {
@@ -121,12 +121,12 @@ func TestValidateEmail_InvalidFormats(t *testing.T) {
 	invalid := []string{
 		"notanemail",
 		"@nodomain",
-		"user@",
-		"user@domain",      // missing TLD
-		"user @domain.com", // space before @
-		"user@ domain.com", // space after @
-		"user@@domain.com", // double @
-		"user@domain..com", // double dot
+		"message@",
+		"message@domain",      // missing TLD
+		"message @domain.com", // space before @
+		"message@ domain.com", // space after @
+		"message@@domain.com", // double @
+		"message@domain..com", // double dot
 	}
 
 	for _, e := range invalid {
@@ -227,7 +227,7 @@ func TestValidatePassword_NoLetters(t *testing.T) {
 func TestValidateRegisterUser_AllValid(t *testing.T) {
 	req := RegisterUserDto{
 		Username: "validuser",
-		Email:    "user@example.com",
+		Email:    "message@example.com",
 		Password: "Password1",
 	}
 
@@ -272,7 +272,7 @@ func TestValidateRegisterUser_SingleFieldError(t *testing.T) {
 func TestValidateRegisterUser_WeakPassword(t *testing.T) {
 	req := RegisterUserDto{
 		Username: "validuser",
-		Email:    "user@example.com",
+		Email:    "message@example.com",
 		Password: "onlyletters",
 	}
 

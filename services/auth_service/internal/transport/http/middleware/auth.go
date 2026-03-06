@@ -2,12 +2,12 @@ package middleware
 
 import (
 	"context"
-	"github.com/rockkley/pushpost/services/common/httperror"
+	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 	"strings"
 
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 )
 
 type contextKey string

@@ -4,15 +4,15 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	handlerhttp "github.com/rockkley/pushpost/services/common/http"
-	"github.com/rockkley/pushpost/services/common/httperror"
+	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
+	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/common/apperror"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	domaindto "github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	userhttp "github.com/rockkley/pushpost/services/user_service/internal/transport/http"
@@ -80,7 +80,7 @@ func makeUser(id uuid.UUID, username, email string) *entity.User {
 // document this current (buggy) behaviour so regressions are visible.
 
 func TestUserHandler_CreateUser_InvalidJSON(t *testing.T) {
-	req := newJSONRequest(t, http.MethodPost, "/user", `{broken`)
+	req := newJSONRequest(t, http.MethodPost, "/message", `{broken`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(userhttp.NewUserHandler(&mockUserUsecase{}).CreateUser).ServeHTTP(resp, req)
@@ -89,7 +89,7 @@ func TestUserHandler_CreateUser_InvalidJSON(t *testing.T) {
 }
 
 func TestUserHandler_CreateUser_EmptyBody(t *testing.T) {
-	req := httptest.NewRequest(http.MethodPost, "/user", nil)
+	req := httptest.NewRequest(http.MethodPost, "/message", nil)
 	req.Header.Set("Content-Type", "application/json")
 	resp := httptest.NewRecorder()
 
@@ -103,14 +103,14 @@ func TestUserHandler_CreateUser_ValidationErrors(t *testing.T) {
 		name    string
 		payload string
 	}{
-		{name: "username empty", payload: `{"username":"","email":"user@example.com","passwordHash":"hash"}`},
-		{name: "email empty", payload: `{"username":"user","email":"","passwordHash":"hash"}`},
-		{name: "passwordHash empty", payload: `{"username":"user","email":"user@example.com","passwordHash":""}`},
+		{name: "username empty", payload: `{"username":"","email":"message@example.com","passwordHash":"hash"}`},
+		{name: "email empty", payload: `{"username":"message","email":"","passwordHash":"hash"}`},
+		{name: "passwordHash empty", payload: `{"username":"message","email":"message@example.com","passwordHash":""}`},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := newJSONRequest(t, http.MethodPost, "/user", tt.payload)
+			req := newJSONRequest(t, http.MethodPost, "/message", tt.payload)
 			resp := httptest.NewRecorder()
 
 			handlerhttp.MakeHandler(userhttp.NewUserHandler(&mockUserUsecase{}).CreateUser).ServeHTTP(resp, req)
@@ -136,7 +136,7 @@ func TestUserHandler_CreateUser_Success(t *testing.T) {
 		},
 	}
 
-	req := newJSONRequest(t, http.MethodPost, "/user",
+	req := newJSONRequest(t, http.MethodPost, "/message",
 		`{"username":"newuser","email":"new@example.com","passwordHash":"$2a$10$testhash"}`)
 	resp := httptest.NewRecorder()
 
@@ -193,8 +193,8 @@ func TestUserHandler_CreateUser_ServiceErrors(t *testing.T) {
 					return nil, tt.err
 				},
 			}
-			req := newJSONRequest(t, http.MethodPost, "/user",
-				`{"username":"user","email":"user@example.com","passwordHash":"$2a$10$hash"}`)
+			req := newJSONRequest(t, http.MethodPost, "/message",
+				`{"username":"message","email":"message@example.com","passwordHash":"$2a$10$hash"}`)
 			resp := httptest.NewRecorder()
 
 			handlerhttp.MakeHandler(userhttp.NewUserHandler(svc).CreateUser).ServeHTTP(resp, req)
@@ -210,7 +210,7 @@ func TestUserHandler_CreateUser_ServiceErrors(t *testing.T) {
 // ── AuthenticateUser ──────────────────────────────────────────────────────────
 
 func TestUserHandler_AuthenticateUser_InvalidJSON(t *testing.T) {
-	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-user", `{broken`)
+	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-message", `{broken`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(userhttp.NewUserHandler(&mockUserUsecase{}).AuthenticateUser).ServeHTTP(resp, req)
@@ -230,13 +230,13 @@ func TestUserHandler_AuthenticateUser_Success(t *testing.T) {
 		},
 	}
 
-	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-user",
-		`{"email":"user@example.com","passwordHash":"$2a$10$hash"}`)
+	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-message",
+		`{"email":"message@example.com","passwordHash":"$2a$10$hash"}`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(userhttp.NewUserHandler(svc).AuthenticateUser).ServeHTTP(resp, req)
 
-	require.Equal(t, "user@example.com", gotEmail)
+	require.Equal(t, "message@example.com", gotEmail)
 	require.Equal(t, "$2a$10$hash", gotPasswordHash)
 
 	require.Equal(t, http.StatusOK, resp.Code)
@@ -253,8 +253,8 @@ func TestUserHandler_AuthenticateUser_InvalidCredentials(t *testing.T) {
 		},
 	}
 
-	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-user",
-		`{"email":"user@example.com","passwordHash":"wronghash"}`)
+	req := newJSONRequest(t, http.MethodPost, "/users/authenticate-message",
+		`{"email":"message@example.com","passwordHash":"wronghash"}`)
 	resp := httptest.NewRecorder()
 
 	handlerhttp.MakeHandler(userhttp.NewUserHandler(svc).AuthenticateUser).ServeHTTP(resp, req)
@@ -323,7 +323,7 @@ func TestUserHandler_GetUserByEmail_NotFound(t *testing.T) {
 func TestUserHandler_GetUserByEmail_DeletedUser(t *testing.T) {
 	svc := &mockUserUsecase{
 		getUserByEmailFunc: func(_ context.Context, _ string) (*entity.User, error) {
-			return nil, apperror.NotFound(apperror.CodeUserDeleted, "user is deleted")
+			return nil, apperror.NotFound(apperror.CodeUserDeleted, "message is deleted")
 		},
 	}
 
