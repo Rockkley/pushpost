@@ -1,24 +1,31 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE outbox_events
+
+CREATE TABLE outbox
 (
-    id             UUID PRIMARY KEY,
-    aggregate_type TEXT      NOT NULL,
-    aggregate_id   TEXT      NOT NULL,
-    event_type     TEXT      NOT NULL,
-    payload        JSONB     NOT NULL,
-    status         TEXT      NOT NULL DEFAULT 'pending',
-    created_at     TIMESTAMP NOT NULL DEFAULT now(),
-    processed_at   TIMESTAMP
+    id             UUID        PRIMARY KEY,
+    aggregate_id   TEXT        NOT NULL,
+    aggregate_type TEXT        NOT NULL,
+    event_type     TEXT        NOT NULL,
+    payload        JSONB       NOT NULL,
+    status         TEXT        NOT NULL DEFAULT 'pending',
+    attempts       INT         NOT NULL DEFAULT 0,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    CONSTRAINT outbox_status_check CHECK (status IN ('pending', 'processing', 'processed'))
 );
 
-CREATE INDEX idx_outbox_status_created
-    ON outbox_events (status, created_at);
+
+CREATE INDEX idx_outbox_pending ON outbox (created_at ASC)
+    WHERE status = 'pending';
+
+CREATE INDEX idx_outbox_processing ON outbox (updated_at ASC)
+    WHERE status = 'processing';
 
 -- +goose StatementEnd
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS outbox_events CASCADE;
-
+DROP TABLE IF EXISTS outbox;
 -- +goose StatementEnd
