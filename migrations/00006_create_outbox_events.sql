@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 
-CREATE TABLE outbox
+CREATE TABLE outbox_events
 (
     id             UUID        PRIMARY KEY,
     aggregate_id   TEXT        NOT NULL,
@@ -17,10 +17,10 @@ CREATE TABLE outbox
 );
 
 
-CREATE INDEX idx_outbox_pending ON outbox (created_at ASC)
+CREATE INDEX idx_outbox_pending ON outbox_events (created_at ASC)
     WHERE status = 'pending';
 
-CREATE INDEX idx_outbox_processing ON outbox (updated_at ASC)
+CREATE INDEX idx_outbox_processing ON outbox_events (updated_at ASC)
     WHERE status = 'processing';
 
 -- +goose StatementEnd

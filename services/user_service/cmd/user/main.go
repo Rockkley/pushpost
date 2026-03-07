@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/rockkley/pushpost/services/common_service/logger"
+	"github.com/rockkley/pushpost/services/common_service/outbox"
+	postgres2 "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -50,9 +52,21 @@ func main() {
 	defer db.Close()
 
 	userRepo := postgres.NewUserRepository(db)
-	userUseCase := usecase.NewUserUseCase(userRepo)
+	uow := postgres.NewUnitOfWork(db)
+	userUseCase := usecase.NewUserUseCase(uow, userRepo)
 	userHandler := myHTTP.NewUserHandler(userUseCase)
 	mux := transport.NewRouter(appLog, userHandler)
+
+	publisher := &noopPublisher{log: appLog}
+	workerRepo := postgres2.NewOutboxRepository(db)
+	//publisher := &noopPublisher{log: appLog}
+
+	outboxWorker := outbox.NewWorker(
+		workerRepo,
+		publisher,
+		outbox.DefaultWorkerConfig(),
+		appLog,
+	)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
@@ -60,6 +74,12 @@ func main() {
 		ReadTimeout:  cfg.HTTP.ReadTimeout,
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
+
+	// ctx для воркера — живёт всё время работы сервиса
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go outboxWorker.Run(ctx)
 
 	serverErr := make(chan error, 1)
 	go func() {
@@ -80,13 +100,29 @@ func main() {
 		appLog.Info("user service shutting down...")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
-	defer cancel()
+	// Останавливаем воркер
+	cancel()
 
-	if err = srv.Shutdown(ctx); err != nil {
+	// Отдельный ctx только для graceful shutdown HTTP
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+	defer shutdownCancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	appLog.Info("user service stopped")
+}
+
+type noopPublisher struct {
+	log *slog.Logger
+}
+
+func (p *noopPublisher) Publish(ctx context.Context, event *outbox.OutboxEvent) error {
+	p.log.Info("noop publisher: event skipped",
+		slog.String("event_type", event.EventType),
+		slog.String("aggregate_id", event.AggregateID),
+	)
+	return nil
 }

@@ -34,7 +34,7 @@ func NewWorker(repo OutboxRepository, publisher Publisher, cfg WorkerConfig, log
 	}
 }
 
-func (w *Worker) Start(ctx context.Context) {
+func (w *Worker) Run(ctx context.Context) {
 	if err := w.repo.ResetStuck(ctx, w.stuckAfter); err != nil {
 		w.log.Error("failed to reset stuck events", "error", err)
 	}
@@ -69,7 +69,13 @@ func (w *Worker) processBatch(ctx context.Context) {
 	events, err := w.repo.ClaimPending(ctx, w.batchSize, w.maxAttempts)
 
 	if err != nil {
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+
+			return
+		}
+
 		w.log.Error("failed to claim pending events", slog.Any("error", err))
+
 		return
 	}
 

@@ -6,17 +6,18 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/database"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"strings"
 	"time"
 )
 
 type UserRepository struct {
-	db *sql.DB
+	exec database.Executor
 }
 
-func NewUserRepository(db *sql.DB) *UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepository(exec database.Executor) *UserRepository {
+	return &UserRepository{exec: exec}
 }
 
 func (r *UserRepository) Create(ctx context.Context, user *entity.User) error {
@@ -24,7 +25,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entity.User) error {
 			INSERT INTO users (id, username, email, password_hash) 
 			VALUES ($1,$2,$3,$4) RETURNING created_at, updated_at`
 
-	err := r.db.QueryRowContext(ctx, query,
+	err := r.exec.QueryRowContext(ctx, query,
 		user.Id, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
@@ -42,7 +43,7 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*entit
 
 	var user entity.User
 
-	err := r.db.QueryRowContext(ctx, query, userId).Scan(
+	err := r.exec.QueryRowContext(ctx, query, userId).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
@@ -65,7 +66,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 
 	var user entity.User
 
-	err := r.db.QueryRowContext(ctx, query, email).Scan(
+	err := r.exec.QueryRowContext(ctx, query, email).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
@@ -87,7 +88,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 
 	var user entity.User
 
-	err := r.db.QueryRowContext(ctx, query, username).Scan(
+	err := r.exec.QueryRowContext(ctx, query, username).Scan(
 		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
@@ -101,15 +102,15 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, error) {
+	var exists bool
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM users
 			WHERE LOWER(email)=LOWER($1) AND deleted_at IS NULL
 			)`
 
-	var exists bool
-
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
+	err := r.exec.QueryRowContext(ctx, query, email).Scan(&exists)
 
 	if err != nil {
 		return false, apperror.MapPostgresError(err, "check email exists")
@@ -119,15 +120,15 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 }
 
 func (r *UserRepository) UsernameExists(ctx context.Context, username string) (bool, error) {
+	var exists bool
+
 	query := `
 		SELECT EXISTS(
 			SELECT 1 FROM users
 			WHERE LOWER(username)=LOWER($1) AND deleted_at IS NULL
 			)`
 
-	var exists bool
-
-	err := r.db.QueryRowContext(ctx, query, username).Scan(&exists)
+	err := r.exec.QueryRowContext(ctx, query, username).Scan(&exists)
 
 	if err != nil {
 		return false, apperror.MapPostgresError(err, "check username exists")
@@ -142,7 +143,7 @@ func (r *UserRepository) SoftDelete(ctx context.Context, userId uuid.UUID) error
 		SET deleted_at = $1
 		WHERE id=$2 and deleted_at IS NULL`
 
-	result, err := r.db.ExecContext(ctx, query, time.Now(), userId)
+	result, err := r.exec.ExecContext(ctx, query, time.Now(), userId)
 
 	if err != nil {
 		return apperror.MapPostgresError(err, "soft delete user_service")

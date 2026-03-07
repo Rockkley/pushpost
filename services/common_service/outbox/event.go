@@ -20,5 +20,5 @@ type OutboxEvent struct {
 	Payload       []byte
 	Status        string
 	CreatedAt     time.Time
-	UpdatedAt     *time.Time
+	UpdatedAt     time.Time
 }

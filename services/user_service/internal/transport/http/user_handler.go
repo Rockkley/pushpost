@@ -11,10 +11,10 @@ import (
 )
 
 type UserHandler struct {
-	userUseCase domain.UserUseCase
+	userUseCase domain.UserUseCaseInterface
 }
 
-func NewUserHandler(userUseCase domain.UserUseCase) *UserHandler {
+func NewUserHandler(userUseCase domain.UserUseCaseInterface) *UserHandler {
 	return &UserHandler{userUseCase: userUseCase}
 }
 

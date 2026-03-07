@@ -1,4 +1,4 @@
-package postgtes
+package postgres
 
 import (
 	"context"
@@ -13,39 +13,27 @@ type OutboxRepository struct {
 	db *sql.DB
 }
 
-func (r *OutboxRepository) Insert(ctx context.Context, tx *sql.Tx, event *outbox.OutboxEvent) error {
-	_, err := tx.ExecContext(ctx,
-		`INSERT INTO outbox_events 
-    (id, aggregate_id, aggregate_type, event_type, payload, status, created_at)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		event.ID,
-		event.AggregateID,
-		event.AggregateType,
-		event.EventType,
-		event.Payload,
-		event.Status,
-		event.CreatedAt,
-	)
-
-	return err
+func NewOutboxRepository(db *sql.DB) *OutboxRepository {
+	return &OutboxRepository{db: db}
 }
 
-func (r *OutboxRepository) ClaimPending(ctx context.Context, limit int, maxAttempts int) ([]*outbox.OutboxEvent, error) {
-	rows, err := r.db.QueryContext(ctx,
-		`UPDATE outbox_events
-	SET status = $1, updated_at = NOW()
-	WHERE id IN (
-    	SELECT id FROM outbox_events
-              WHERE status = $2 
-              AND attempts < $3
-              ORDER BY created_at  
-              LIMIT $4
-              FOR UPDATE SKIP LOCKED
-)
-	RETURNING id, aggregate_id, aggregate_type, event_type, payload, attempts, created_at, updated_at`,
-		outbox.StatusProcessing, outbox.StatusPending, maxAttempts, limit)
+func (s *OutboxRepository) ClaimPending(ctx context.Context, limit int, maxAttempts int) ([]*outbox.OutboxEvent, error) {
+	rows, err := s.db.QueryContext(ctx, `
+		UPDATE outbox_events
+		SET status     = $1,
+		    updated_at = NOW()
+		WHERE id IN (
+			SELECT id FROM outbox_events
+			WHERE  status   = $2
+			  AND  attempts < $3
+			ORDER BY created_at ASC
+			LIMIT $4
+			FOR UPDATE SKIP LOCKED
+		)
+		RETURNING id, aggregate_id, aggregate_type, event_type, payload, status, attempts, created_at, updated_at
+	`, outbox.StatusProcessing, outbox.StatusPending, maxAttempts, limit)
 	if err != nil {
-		return nil, fmt.Errorf("fetch pending events: %w", err)
+		return nil, fmt.Errorf("outbox claim pending: %w", err)
 	}
 	defer rows.Close()
 
@@ -63,10 +51,11 @@ func (r *OutboxRepository) ClaimPending(ctx context.Context, limit int, maxAttem
 			&e.CreatedAt,
 			&e.UpdatedAt,
 		); err != nil {
-			return nil, fmt.Errorf("scan event: %w", err)
+			return nil, fmt.Errorf("outbox scan: %w", err)
 		}
 		events = append(events, &e)
 	}
+
 	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("outbox rows: %w", err)
 	}
