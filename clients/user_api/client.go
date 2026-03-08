@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	passwordTools "github.com/rockkley/pushpost/services/common_service/password"
 	"io"
 	"net/http"
 	"net/url"
@@ -92,9 +93,15 @@ func (c *UserClient) AuthenticateUser(ctx context.Context, email, password strin
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
+	passwordHash, err := passwordTools.Hash(password)
+
+	if err != nil {
+
+		return nil, fmt.Errorf("error hashing password: %w", err)
+	}
 	body := map[string]string{
 		"email":        email,
-		"passwordHash": password,
+		"passwordHash": passwordHash,
 	}
 
 	bodyBytes, err := json.Marshal(body)
@@ -130,7 +137,7 @@ func (c *UserClient) AuthenticateUser(ctx context.Context, email, password strin
 	return decodeUser(resp)
 }
 
-func (c *UserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*UserResponse, error) {
+func (c *UserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*UserResponse, error) { //fixme
 	endpoint, err := url.JoinPath(c.baseURL, "users", id.String())
 
 	if err != nil {

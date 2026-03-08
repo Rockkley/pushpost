@@ -51,15 +51,13 @@ func main() {
 	}
 	defer db.Close()
 
-	userRepo := postgres.NewUserRepository(db)
 	uow := postgres.NewUnitOfWork(db)
-	userUseCase := usecase.NewUserUseCase(uow, userRepo)
+	userUseCase := usecase.NewUserUseCase(uow)
 	userHandler := myHTTP.NewUserHandler(userUseCase)
 	mux := transport.NewRouter(appLog, userHandler)
 
 	publisher := &noopPublisher{log: appLog}
 	workerRepo := postgres2.NewOutboxRepository(db)
-	//publisher := &noopPublisher{log: appLog}
 
 	outboxWorker := outbox.NewWorker(
 		workerRepo,

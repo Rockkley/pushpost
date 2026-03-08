@@ -3,7 +3,6 @@ package dto
 import (
 	"errors"
 	"github.com/google/uuid"
-	dto2 "github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
 )
 
 type LoginUserDTO struct {
@@ -14,7 +13,7 @@ type LoginUserDTO struct {
 
 func (dto *LoginUserDTO) Validate() error {
 	if dto.Email == "" {
-		return errors.New(dto2.ErrEmailRequired)
+		return errors.New("email is required")
 	}
 	if dto.Password == "" {
 		return errors.New("password is required")

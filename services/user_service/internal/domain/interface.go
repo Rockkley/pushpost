@@ -9,7 +9,6 @@ import (
 )
 
 type UserUseCaseInterface interface {
-	AuthenticateUser(ctx context.Context, dto dto.AuthenticateUserRequestDTO) (*entity.User, error)
 	CreateUser(ctx context.Context, dto dto.CreateUserDTO) (*entity.User, error)
 	GetUserByEmail(ctx context.Context, email string) (*entity.User, error)
 }
@@ -20,4 +19,5 @@ type Tx interface {
 }
 type UnitOfWorkInterface interface {
 	Do(ctx context.Context, fn func(tx Tx) error) error
+	Reader() repository.UserRepositoryInterface
 }

@@ -53,7 +53,7 @@ func main() {
 	}
 
 	sessionStore := memory.NewSessionStore()
-	jwtManager := jwt.NewManager(cfg.JWT.Secret, nil)
+	jwtManager := jwt.NewManager(cfg.JWT.Secret, &cfg.JWT.AccessTTL)
 	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, jwtManager)
 	authHandler := myHTTP.NewAuthHandler(authUsecase)
 	authMiddleware := middleware.NewAuthMiddleware(authUsecase)

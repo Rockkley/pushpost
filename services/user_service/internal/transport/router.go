@@ -28,7 +28,7 @@ func NewRouter(log *slog.Logger, userHandler *myHTTP.UserHandler) *chi.Mux {
 	r.Use(chimiddleware.URLFormat)
 
 	r.Post("/user", handlerhttp.MakeHandler(userHandler.CreateUser))
-	r.Post("/users/authenticate-user", handlerhttp.MakeHandler(userHandler.AuthenticateUser))
+	//r.Post("/users/authenticate-user", handlerhttp.MakeHandler(userHandler.AuthenticateUser))
 	r.Get("/users/by-email", handlerhttp.MakeHandler(userHandler.GetUserByEmail))
 
 	return r

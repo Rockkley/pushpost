@@ -22,7 +22,6 @@ const (
 	CodeAlreadyFriends      = "already_friends"
 	CodeNotFriends          = "not_friends"
 	CodeFriendRequestExists = "friend_request_exists"
-	CodeBefriendSelf        = "cannot_befriend_self"
 
 	// Conflict Errors
 	CodeEmailExists    = "email_already_exists"

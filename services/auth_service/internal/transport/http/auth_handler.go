@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
-	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
 	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
@@ -86,6 +86,6 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{
-		"auth_service": "logged out successfully",
+		"auth": "logged out successfully",
 	})
 }

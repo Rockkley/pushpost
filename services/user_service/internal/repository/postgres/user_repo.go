@@ -26,7 +26,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entity.User) error {
 			VALUES ($1,$2,$3,$4) RETURNING created_at, updated_at`
 
 	err := r.exec.QueryRowContext(ctx, query,
-		user.Id, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
+		user.ID, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
 		return apperror.MapPostgresError(err, "create user_service")
@@ -44,7 +44,7 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*entit
 	var user entity.User
 
 	err := r.exec.QueryRowContext(ctx, query, userId).Scan(
-		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -67,7 +67,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 	var user entity.User
 
 	err := r.exec.QueryRowContext(ctx, query, email).Scan(
-		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -89,7 +89,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 	var user entity.User
 
 	err := r.exec.QueryRowContext(ctx, query, username).Scan(
-		&user.Id, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
+		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {

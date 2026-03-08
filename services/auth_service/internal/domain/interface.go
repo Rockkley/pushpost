@@ -3,7 +3,7 @@ package domain
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
 )
 
 type AuthUsecase interface {

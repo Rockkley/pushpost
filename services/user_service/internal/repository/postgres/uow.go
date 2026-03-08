@@ -27,6 +27,10 @@ func NewUnitOfWork(db *sql.DB) *UnitOfWork {
 	return &UnitOfWork{db: db}
 }
 
+func (u *UnitOfWork) Reader() repository.UserRepositoryInterface {
+	return NewUserRepository(u.db)
+}
+
 func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	sqlTx, err := u.db.BeginTx(ctx, nil)
 	if err != nil {

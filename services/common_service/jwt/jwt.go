@@ -25,7 +25,7 @@ func (m *Manager) Generate(userID, deviceID, sessionID uuid.UUID) (string, error
 		"sub": userID.String(),
 		"did": deviceID.String(),
 		"sid": sessionID.String(),
-		"exp": time.Now().Add(24 * time.Hour).Unix(),
+		"exp": time.Now().Add(m.ttl).Unix(),
 	}
 	return jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(m.secret)
 }
