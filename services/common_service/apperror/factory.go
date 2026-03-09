@@ -2,66 +2,56 @@ package apperror
 
 import "net/http"
 
-// Client error codes
+const (
+	CodeInternalError = "internal_error"
+	CodeDatabaseError = "database_error"
+	CodeServiceError  = "service_error"
 
-func NotFound(code, message string) AppError {
-	return &appError{
-		errType:    ErrorTypeClient,
-		httpStatus: http.StatusNotFound,
-		code:       code,
-		message:    message,
-	}
-}
+	// validation errors
+	CodeValidationFailed = "validation_failed"
+	CodeFieldRequired    = "field_required"
+	CodeFieldInvalid     = "field_invalid"
+	CodeFieldTooShort    = "field_too_short"
+	CodeFieldTooLong     = "field_too_long"
+	CodeFieldWeak        = "field_weak"
 
-func Conflict(code, field, message string) AppError {
-	return &appError{
-		errType:    ErrorTypeClient,
-		httpStatus: http.StatusConflict,
-		code:       code,
-		field:      field,
-		message:    message,
-	}
-}
+	// generic errors
+	CodeAlreadyExists = "already_exists"
+	CodeUnauthorized  = "unauthorized"
+)
 
+// 4xx ----------------
 func BadRequest(code, message string) AppError {
-	return &appError{
-		errType:    ErrorTypeClient,
-		httpStatus: http.StatusBadRequest,
-		code:       code,
-		message:    message,
-	}
-}
-
-func Forbidden(code, message string) AppError {
-	return &appError{
-		errType:    ErrorTypeClient,
-		httpStatus: http.StatusForbidden,
-		code:       code,
-		message:    message,
-	}
+	return &appError{httpStatus: http.StatusBadRequest, code: code, message: message}
 }
 
 func Unauthorized(code, message string) AppError {
-	return &appError{
-		errType:    ErrorTypeClient,
-		httpStatus: http.StatusUnauthorized,
-		code:       code,
-		message:    message,
-	}
+	return &appError{httpStatus: http.StatusUnauthorized, code: code, message: message}
+}
+
+func Forbidden(code, message string) AppError {
+	return &appError{httpStatus: http.StatusForbidden, code: code, message: message}
+}
+
+func NotFound(code, message string) AppError {
+	return &appError{httpStatus: http.StatusNotFound, code: code, message: message}
+}
+
+func Conflict(code, field, message string) AppError {
+	return &appError{httpStatus: http.StatusConflict, code: code, field: field, message: message}
 }
 
 func Validation(code, field, message string) AppError {
 	return &appError{
-		errType:    ErrorTypeValidation,
 		httpStatus: http.StatusUnprocessableEntity,
 		code:       code,
 		field:      field,
 		message:    message,
 	}
 }
+
 func ValidationFields(fields map[string]string) AppError {
 	return &appError{
-		errType:    ErrorTypeValidation,
 		httpStatus: http.StatusUnprocessableEntity,
 		code:       CodeValidationFailed,
 		fields:     fields,
@@ -69,11 +59,10 @@ func ValidationFields(fields map[string]string) AppError {
 	}
 }
 
-// Server error codes
+// 5xx ----------------
 
 func Internal(message string, cause error) AppError {
 	return &appError{
-		errType:    ErrorTypeServer,
 		httpStatus: http.StatusInternalServerError,
 		code:       CodeInternalError,
 		message:    message,
@@ -83,7 +72,6 @@ func Internal(message string, cause error) AppError {
 
 func Database(message string, cause error) AppError {
 	return &appError{
-		errType:    ErrorTypeServer,
 		httpStatus: http.StatusInternalServerError,
 		code:       CodeDatabaseError,
 		message:    message,
@@ -93,44 +81,9 @@ func Database(message string, cause error) AppError {
 
 func Service(message string, cause error) AppError {
 	return &appError{
-		errType:    ErrorTypeServer,
 		httpStatus: http.StatusInternalServerError,
 		code:       CodeServiceError,
 		message:    message,
 		cause:      cause,
 	}
-}
-
-// Concrete errors
-
-func UserNotFound() AppError {
-	return NotFound(CodeUserNotFound, "user_service not found")
-}
-
-func EmailAlreadyExists() AppError {
-	return Conflict(CodeEmailExists, "email", "email already exists")
-}
-
-func UsernameAlreadyExists() AppError {
-	return Conflict(CodeUsernameExists, "username", "username already exists")
-}
-
-func InvalidCredentials() AppError {
-	return Unauthorized(CodeInvalidCredentials, "invalid credentials")
-}
-
-func SessionExpired() AppError {
-	return Unauthorized(CodeSessionExpired, "session expired")
-}
-
-func AccountDeleted() AppError {
-	return Forbidden(CodeAccountDeleted, "account has been deleted")
-}
-
-func CannotMessageSelf() AppError {
-	return BadRequest(CodeCannotMessageSelf, "cannot send message_service to yourself")
-}
-
-func MessageNotFound() AppError {
-	return NotFound(CodeMessageNotFound, "message_service not found")
 }

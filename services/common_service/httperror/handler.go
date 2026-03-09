@@ -3,11 +3,11 @@ package httperror
 import (
 	"encoding/json"
 	"errors"
-	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"log/slog"
 	"net/http"
 
 	"github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 )
 
 type ErrorResponse struct {
@@ -16,49 +16,41 @@ type ErrorResponse struct {
 	Fields map[string]string `json:"fields,omitempty"`
 }
 
+// HandleError maps an error to an HTTP response. If the error is an AppError, it uses its HTTP status and code;
+// otherwise, it returns a generic 500 error.
 func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 	log := ctxlog.From(r.Context())
 
 	var appErr apperror.AppError
-	if errors.As(err, &appErr) {
-		handleAppError(w, log, appErr)
+	if !errors.As(err, &appErr) {
+		// Неизвестная ошибка — не раскрываем детали клиенту.
+		log.Error("unhandled error", slog.Any("error", err))
+		WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
 		return
 	}
 
-	log.Error("unhandled error", slog.Any("error", err))
-	WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
-}
+	status := appErr.HTTPStatus()
 
-func handleAppError(w http.ResponseWriter, log *slog.Logger, appErr apperror.AppError) {
-	switch appErr.Type() {
-
-	case apperror.ErrorTypeClient, apperror.ErrorTypeValidation:
-		log.Debug("client error",
-			slog.String("code", appErr.Code()),
-			slog.String("field", appErr.Field()),
-			slog.Int("status", appErr.HTTPStatus()),
-		)
-		resp := ErrorResponse{Code: appErr.Code(), Field: appErr.Field()}
-		if appErr.Fields() != nil {
-			resp.Fields = appErr.Fields()
-		}
-		WriteJSON(w, appErr.HTTPStatus(), resp)
-
-	case apperror.ErrorTypeServer:
+	if status >= 500 {
 		log.Error("server error",
+			slog.Int("status", status),
 			slog.String("code", appErr.Code()),
 			slog.Any("cause", appErr.Unwrap()),
 		)
-		WriteJSON(w, appErr.HTTPStatus(), ErrorResponse{Code: appErr.Code()})
-
-	default:
-		log.Error("unhandled apperror type",
-			slog.Int("type", int(appErr.Type())),
+	} else {
+		log.Debug("client error",
+			slog.Int("status", status),
 			slog.String("code", appErr.Code()),
-			slog.Any("error", appErr),
+			slog.String("field", appErr.Field()),
 		)
-		WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
 	}
+
+	resp := ErrorResponse{
+		Code:   appErr.Code(),
+		Field:  appErr.Field(),
+		Fields: appErr.Fields(),
+	}
+	WriteJSON(w, status, resp)
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {

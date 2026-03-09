@@ -2,19 +2,18 @@ package usecase
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/clients/user_api"
+	apperr "github.com/rockkley/pushpost/services/auth_service/internal/apperror"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
+	"github.com/rockkley/pushpost/services/auth_service/internal/repository"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"github.com/rockkley/pushpost/services/common_service/jwt"
 	passwordTools "github.com/rockkley/pushpost/services/common_service/password"
 	"log/slog"
 	"time"
-
-	"github.com/google/uuid"
-
-	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
-	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
-	"github.com/rockkley/pushpost/services/auth_service/internal/repository"
-	"github.com/rockkley/pushpost/services/common_service/apperror"
 )
 
 type AuthUsecase struct {
@@ -42,8 +41,7 @@ func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*
 
 	if err != nil {
 		log.Error("failed to hash password", slog.Any("error", err))
-
-		return nil, apperror.Internal("failed to hash password", err)
+		return nil, commonapperr.Internal("failed to hash password", err)
 	}
 
 	created, err := s.userClient.CreateUser(ctx, user_api.CreateUserRequest{
@@ -75,12 +73,12 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 	if err != nil {
 
 		log.Debug("login attempt: user not found")
-		return "", apperror.InvalidCredentials()
+		return "", apperr.InvalidCredentials()
 	}
 
 	if err = passwordTools.Compare(req.Password, user.PasswordHash); err != nil {
 		log.Debug("login attempt: password mismatch", slog.String("user_id", user.ID.String()))
-		return "", apperror.InvalidCredentials()
+		return "", apperr.InvalidCredentials()
 	}
 
 	// ensure deviceID is never nil - generate one if the client didn't supply it.
@@ -99,12 +97,11 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 
 	if err = s.sessionStore.Save(ctx, session); err != nil {
 		log.Error("failed to save session", slog.Any("error", err))
-		return "", apperror.Internal("failed to create session", err)
+		return "", commonapperr.Internal("failed to create session", err)
 	}
 
 	token, err := s.jwtManager.Generate(user.ID, deviceID, sessionID)
 	if err != nil {
-		// session was already persisted - clean it up so it doesn't become orphaned
 		if delErr := s.sessionStore.Delete(ctx, sessionID); delErr != nil {
 			log.Error("failed to delete orphaned session after token error",
 				slog.String("session_id", sessionID.String()),
@@ -112,7 +109,7 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 			)
 		}
 		log.Error("failed to generate token", slog.Any("error", err))
-		return "", apperror.Internal("failed to generate token", err)
+		return "", commonapperr.Internal("failed to generate token", err)
 	}
 
 	log.Info("user logged in",
@@ -140,7 +137,7 @@ func (s *AuthUsecase) Logout(ctx context.Context, sessionID uuid.UUID) error {
 
 	if err = s.sessionStore.Delete(ctx, sessionID); err != nil {
 		log.Error("failed to delete session", slog.Any("error", err))
-		return apperror.Internal("failed to delete session", err)
+		return commonapperr.Internal("failed to delete session", err)
 	}
 
 	log.Info("user logged out", slog.String("user_id", session.UserID.String()))
@@ -153,34 +150,34 @@ func (s *AuthUsecase) AuthenticateRequest(ctx context.Context, tokenStr string) 
 	claims, err := s.jwtManager.Parse(tokenStr)
 	if err != nil {
 		log.Debug("token parse failed", slog.Any("error", err))
-		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid token")
+		return nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "invalid token")
 	}
 
 	sessionIDStr, ok := claims["sid"].(string)
 	if !ok {
 		log.Warn("token missing sid claim")
-		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "token missing session id")
+		return nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "token missing session id")
 	}
 
 	sessionID, err := uuid.Parse(sessionIDStr)
 	if err != nil {
 		log.Warn("invalid session id in token", slog.String("sid", sessionIDStr))
-		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "invalid session id format")
+		return nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "invalid session id format")
 	}
 
 	session, err := s.sessionStore.Get(ctx, sessionID)
 	if err != nil {
 		log.Debug("session not found", slog.String("session_id", sessionID.String()))
-		return nil, apperror.Unauthorized(apperror.CodeUnauthorized, "session not found")
+		return nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "session not found")
 	}
 
 	if time.Now().Unix() > session.Expires {
 		log.Info("session expired", slog.String("session_id", sessionID.String()))
 		if delErr := s.sessionStore.Delete(ctx, sessionID); delErr != nil {
 			log.Error("failed to delete expired session", slog.Any("error", delErr))
-			return nil, apperror.Internal("failed to delete expired session", delErr)
+			return nil, commonapperr.Internal("failed to delete expired session", delErr)
 		}
-		return nil, apperror.SessionExpired()
+		return nil, apperr.SessionExpired()
 	}
 
 	return session, nil

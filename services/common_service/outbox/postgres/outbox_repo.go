@@ -17,8 +17,8 @@ func NewOutboxRepository(db *sql.DB) *OutboxRepository {
 	return &OutboxRepository{db: db}
 }
 
-func (s *OutboxRepository) ClaimPending(ctx context.Context, limit int, maxAttempts int) ([]*outbox.OutboxEvent, error) {
-	rows, err := s.db.QueryContext(ctx, `
+func (r *OutboxRepository) ClaimPending(ctx context.Context, limit int, maxAttempts int) ([]*outbox.OutboxEvent, error) {
+	rows, err := r.db.QueryContext(ctx, `
 		UPDATE outbox_events
 		SET status     = $1,
 		    updated_at = NOW()

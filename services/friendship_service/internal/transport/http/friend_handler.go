@@ -3,8 +3,8 @@ package http
 import (
 	"encoding/json"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/internal/handler/http/middleware"
 	"github.com/rockkley/pushpost/internal/service"
+	"github.com/rockkley/pushpost/services/common_service/handler/http/middleware"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/dto"
 	"net/http"

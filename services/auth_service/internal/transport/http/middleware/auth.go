@@ -2,12 +2,11 @@ package middleware
 
 import (
 	"context"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 	"strings"
-
-	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
-	"github.com/rockkley/pushpost/services/common_service/apperror"
 )
 
 type contextKey string
@@ -30,7 +29,9 @@ func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenStr, ok := extractBearerToken(r.Header.Get("Authorization"))
 		if !ok {
-			httperror.HandleError(w, r, apperror.Unauthorized(apperror.CodeUnauthorized, "missing or invalid authorization header"))
+			httperror.HandleError(w, r, commonapperr.Unauthorized(
+				commonapperr.CodeUnauthorized, "missing or invalid authorization header",
+			))
 			return
 		}
 

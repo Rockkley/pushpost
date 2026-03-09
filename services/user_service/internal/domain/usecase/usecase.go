@@ -3,15 +3,14 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
 	"log/slog"
 
 	"github.com/google/uuid"
-
-	"github.com/rockkley/pushpost/services/common_service/apperror"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
+	apperr "github.com/rockkley/pushpost/services/user_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 )
@@ -47,7 +46,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 	})
 
 	if err != nil {
-		return nil, fmt.Errorf("marshal user.created event: %w", err)
+		return nil, commonapperr.Internal("marshal user.created event", err)
 	}
 
 	err = u.uow.Do(ctx, func(tx domain.Tx) error {
@@ -74,16 +73,64 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.GetUserByEmail"))
 
-	user, err := u.uow.Reader().GetUserByEmail(ctx, email)
-	if err != nil {
-		log.Debug("user not found by email")
-		return nil, apperror.NotFound(apperror.CodeUserNotFound, "user not found")
+	if email == "" {
+		return nil, commonapperr.Validation(
+			commonapperr.CodeFieldRequired, "email", "email is required",
+		)
 	}
 
-	if user.IsDeleted() {
-		log.Warn("attempt to find deleted account by email", slog.String("user_id", user.ID.String()))
-		return nil, apperror.NotFound(apperror.CodeUserDeleted, "user is deleted")
+	user, err := u.uow.Reader().GetUserByEmail(ctx, email)
+	if err != nil {
+		log.Debug("failed to get user by email", slog.Any("error", err))
+		return nil, err
 	}
 
 	return user, nil
+}
+
+func (u *UserUseCase) GetUserByID(ctx context.Context, id uuid.UUID) (*entity.User, error) {
+	log := ctxlog.From(ctx).With(
+		slog.String("op", "UserUseCase.GetUserByID"),
+		slog.String("user_id", id.String()),
+	)
+
+	// FindByID not filtering deleted_at in SQL
+	// we check it explicitly in the use case to distinguish "not found" and "deleted" at the business logic level.
+	user, err := u.uow.Reader().FindByID(ctx, id)
+	if err != nil {
+		log.Debug("user not found", slog.Any("error", err))
+		return nil, err
+	}
+
+	if user.IsDeleted() {
+		log.Warn("attempt to access deleted account")
+		return nil, apperr.UserDeleted()
+	}
+
+	return user, nil
+}
+
+func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
+	log := ctxlog.From(ctx).With(
+		slog.String("op", "UserUseCase.DeleteUser"),
+		slog.String("user_id", id.String()),
+	)
+
+	err := u.uow.Do(ctx, func(tx domain.Tx) error {
+		user, err := tx.Users().FindByID(ctx, id)
+		if err != nil {
+			return err
+		}
+		if user.IsDeleted() {
+			return apperr.UserNotFound()
+		}
+		return tx.Users().SoftDelete(ctx, id)
+	})
+	if err != nil {
+		log.Error("failed to delete user", slog.Any("error", err))
+		return err
+	}
+
+	log.Info("user deleted")
+	return nil
 }

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
-	passwordTools "github.com/rockkley/pushpost/services/common_service/password"
 	"io"
 	"net/http"
 	"net/url"
@@ -85,57 +84,57 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 	return decodeUser(resp)
 }
 
-func (c *UserClient) AuthenticateUser(ctx context.Context, email, password string) (*UserResponse, error) {
-	endpoint, err := url.JoinPath(c.baseURL, "users", "authenticate-user")
-
-	if err != nil {
-
-		return nil, fmt.Errorf("build users endpoint: %w", err)
-	}
-
-	passwordHash, err := passwordTools.Hash(password)
-
-	if err != nil {
-
-		return nil, fmt.Errorf("error hashing password: %w", err)
-	}
-	body := map[string]string{
-		"email":        email,
-		"passwordHash": passwordHash,
-	}
-
-	bodyBytes, err := json.Marshal(body)
-
-	if err != nil {
-
-		return nil, fmt.Errorf("marshal request: %w", err)
-	}
-
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
-
-	if err != nil {
-
-		return nil, fmt.Errorf("build request: %w", err)
-	}
-
-	httpReq.Header.Set("Content-Type", "application/json")
-
-	resp, err := c.client.Do(httpReq)
-
-	if err != nil {
-
-		return nil, fmt.Errorf("execute request: %w", err)
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-
-		return nil, decodeError(resp)
-	}
-
-	return decodeUser(resp)
-}
+//func (c *UserClient) AuthenticateUser(ctx context.Context, email, password string) (*UserResponse, error) {
+//	endpoint, err := url.JoinPath(c.baseURL, "users", "authenticate-user")
+//
+//	if err != nil {
+//
+//		return nil, fmt.Errorf("build users endpoint: %w", err)
+//	}
+//
+//	passwordHash, err := passwordTools.Hash(password)
+//
+//	if err != nil {
+//
+//		return nil, fmt.Errorf("error hashing password: %w", err)
+//	}
+//	body := map[string]string{
+//		"email":        email,
+//		"passwordHash": passwordHash,
+//	}
+//
+//	bodyBytes, err := json.Marshal(body)
+//
+//	if err != nil {
+//
+//		return nil, fmt.Errorf("marshal request: %w", err)
+//	}
+//
+//	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(bodyBytes))
+//
+//	if err != nil {
+//
+//		return nil, fmt.Errorf("build request: %w", err)
+//	}
+//
+//	httpReq.Header.Set("Content-Type", "application/json")
+//
+//	resp, err := c.client.Do(httpReq)
+//
+//	if err != nil {
+//
+//		return nil, fmt.Errorf("execute request: %w", err)
+//	}
+//
+//	defer resp.Body.Close()
+//
+//	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+//
+//		return nil, decodeError(resp)
+//	}
+//
+//	return decodeUser(resp)
+//}
 
 func (c *UserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*UserResponse, error) { //fixme
 	endpoint, err := url.JoinPath(c.baseURL, "users", id.String())
@@ -172,24 +171,30 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserRes
 	endpoint, err := url.JoinPath(c.baseURL, "users", "by-email")
 
 	if err != nil {
+
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+
 	if err != nil {
+
 		return nil, fmt.Errorf("build request: %w", err)
 	}
+
 	q := req.URL.Query()
 	q.Set("email", email)
 	req.URL.RawQuery = q.Encode()
-
 	resp, err := c.client.Do(req)
+
 	if err != nil {
+
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+
 		return nil, decodeError(resp)
 	}
 
@@ -204,7 +209,6 @@ func decodeUser(resp *http.Response) (*UserResponse, error) {
 	if err := dec.Decode(&out); err != nil {
 		return nil, fmt.Errorf("decode json: %w", err)
 	}
-
 	return &out, nil
 }
 

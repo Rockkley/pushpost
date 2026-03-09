@@ -2,7 +2,9 @@ package http
 
 import (
 	"encoding/json"
-	"github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
 	"github.com/rockkley/pushpost/services/user_service/internal/mapper"
@@ -23,7 +25,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 
-		return err
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
 
 	if err := req.Validate(); err != nil {
@@ -31,10 +33,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	mappedDTO := mapper.CreateUserFromRequestToUseCase(req)
-
-	user, err := h.userUseCase.CreateUser(r.Context(), *mappedDTO)
-
+	user, err := h.userUseCase.CreateUser(r.Context(), *mapper.CreateUserFromRequestToUseCase(req))
 	if err != nil {
 		return err
 	}
@@ -68,17 +67,35 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) error {
 	email := r.URL.Query().Get("email")
-
 	if email == "" {
-		return apperror.BadRequest(apperror.CodeFieldRequired, "email query parameter is required")
+
+		return commonapperr.Validation(
+			commonapperr.CodeFieldRequired, "email", "email query parameter is required",
+		)
 	}
 
 	user, err := h.userUseCase.GetUserByEmail(r.Context(), email)
 
 	if err != nil {
+
 		return err
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, user)
 
+}
+
+func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) error {
+	rawID := chi.URLParam(r, "id")
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid user id")
+	}
+
+	user, err := h.userUseCase.GetUserByID(r.Context(), id)
+	if err != nil {
+		return err // UserNotFound / UserDeleted — пробрасываем
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, user)
 }

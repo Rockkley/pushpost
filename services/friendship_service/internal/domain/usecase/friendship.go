@@ -3,10 +3,9 @@ package services
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/internal/services/friendship/repository"
 	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
-	repository2 "github.com/rockkley/pushpost/services/friendship_service/internal/repository"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/dto"
 	"time"
 )

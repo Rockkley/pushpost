@@ -5,14 +5,14 @@ import "github.com/google/uuid"
 type CreateUserRequest struct {
 	Username     string `json:"username"`
 	Email        string `json:"email"`
-	PasswordHash string `json:"passwordHash"`
+	PasswordHash string `json:"password_hash"`
 }
 
 type UserResponse struct {
 	ID           uuid.UUID `json:"id"`
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
-	PasswordHash string    `json:"passwordHash"`
+	PasswordHash string    `json:"password_hash"`
 }
 
 type AuthenticateUserDTO struct {

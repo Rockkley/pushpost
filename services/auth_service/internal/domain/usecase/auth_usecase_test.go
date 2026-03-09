@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
-	user_api2 "github.com/rockkley/pushpost/clients/user_api"
+	"github.com/rockkley/pushpost/clients/user_api"
 	jwtpkg "github.com/rockkley/pushpost/services/common_service/jwt"
 	"testing"
 	"time"
@@ -12,8 +12,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
+	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
 	authrep "github.com/rockkley/pushpost/services/auth_service/internal/repository"
-	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/dto"
 	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/stretchr/testify/require"
 )
@@ -30,7 +30,7 @@ func lowCostHash(t testing.TB, password string) string {
 	return string(b)
 }
 
-func newTestUsecase(client user_api2.Client, store authrep.SessionStore) *AuthUsecase {
+func newTestUsecase(client user_api.Client, store authrep.SessionStore) *AuthUsecase {
 	jm := jwtpkg.NewManager(testJWTSecret, nil)
 	return NewAuthUsecase(client, store, jm)
 }
@@ -38,39 +38,39 @@ func newTestUsecase(client user_api2.Client, store authrep.SessionStore) *AuthUs
 // ── Mock: user_api.Client ──────────────────────────────────────────────────────
 
 type mockUserClient struct {
-	createUserFunc       func(ctx context.Context, req user_api2.CreateUserRequest) (*user_api2.UserResponse, error)
-	getUserByIDFunc      func(ctx context.Context, id uuid.UUID) (*user_api2.UserResponse, error)
-	getUserByEmailFunc   func(ctx context.Context, email string) (*user_api2.UserResponse, error)
-	authenticateUserFunc func(ctx context.Context, email, password string) (*user_api2.UserResponse, error)
+	createUserFunc       func(ctx context.Context, req user_api.CreateUserRequest) (*user_api.UserResponse, error)
+	getUserByIDFunc      func(ctx context.Context, id uuid.UUID) (*user_api.UserResponse, error)
+	getUserByEmailFunc   func(ctx context.Context, email string) (*user_api.UserResponse, error)
+	authenticateUserFunc func(ctx context.Context, email, password string) (*user_api.UserResponse, error)
 }
 
-func (m *mockUserClient) CreateUser(ctx context.Context, req user_api2.CreateUserRequest) (*user_api2.UserResponse, error) {
+func (m *mockUserClient) CreateUser(ctx context.Context, req user_api.CreateUserRequest) (*user_api.UserResponse, error) {
 	if m.createUserFunc != nil {
 		return m.createUserFunc(ctx, req)
 	}
 	return nil, nil
 }
 
-func (m *mockUserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*user_api2.UserResponse, error) {
+func (m *mockUserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*user_api.UserResponse, error) {
 	if m.getUserByIDFunc != nil {
 		return m.getUserByIDFunc(ctx, id)
 	}
 	return nil, nil
 }
 
-func (m *mockUserClient) GetUserByEmail(ctx context.Context, email string) (*user_api2.UserResponse, error) {
+func (m *mockUserClient) GetUserByEmail(ctx context.Context, email string) (*user_api.UserResponse, error) {
 	if m.getUserByEmailFunc != nil {
 		return m.getUserByEmailFunc(ctx, email)
 	}
 	return nil, nil
 }
 
-func (m *mockUserClient) AuthenticateUser(ctx context.Context, email, password string) (*user_api2.UserResponse, error) {
-	if m.authenticateUserFunc != nil {
-		return m.authenticateUserFunc(ctx, email, password)
-	}
-	return nil, nil
-}
+//func (m *mockUserClient) AuthenticateUser(ctx context.Context, email, password string) (*user_api.UserResponse, error) {
+//	if m.authenticateUserFunc != nil {
+//		return m.authenticateUserFunc(ctx, email, password)
+//	}
+//	return nil, nil
+//}
 
 // ── Mock: repository.SessionStore ─────────────────────────────────────────────
 
@@ -106,13 +106,13 @@ func (m *mockSessionStore) Delete(ctx context.Context, sessionID uuid.UUID) erro
 func TestAuthUsecase_Register_Success(t *testing.T) {
 	userID := uuid.New()
 	client := &mockUserClient{
-		createUserFunc: func(_ context.Context, req user_api2.CreateUserRequest) (*user_api2.UserResponse, error) {
+		createUserFunc: func(_ context.Context, req user_api.CreateUserRequest) (*user_api.UserResponse, error) {
 			require.Equal(t, "alice", req.Username)
 			require.Equal(t, "alice@example.com", req.Email)
 			// Password must be hashed, not plain-text.
 			require.NotEqual(t, "Password1", req.PasswordHash)
 			require.NoError(t, bcrypt.CompareHashAndPassword([]byte(req.PasswordHash), []byte("Password1")))
-			return &user_api2.UserResponse{ID: userID, Username: "alice", Email: "alice@example.com"}, nil
+			return &user_api.UserResponse{ID: userID, Username: "alice", Email: "alice@example.com"}, nil
 		},
 	}
 
@@ -131,7 +131,7 @@ func TestAuthUsecase_Register_Success(t *testing.T) {
 
 func TestAuthUsecase_Register_UserClientError(t *testing.T) {
 	client := &mockUserClient{
-		createUserFunc: func(_ context.Context, _ user_api2.CreateUserRequest) (*user_api2.UserResponse, error) {
+		createUserFunc: func(_ context.Context, _ user_api.CreateUserRequest) (*user_api.UserResponse, error) {
 			return nil, apperror.EmailAlreadyExists()
 		},
 	}
@@ -153,9 +153,9 @@ func TestAuthUsecase_Register_PasswordIsHashedBeforeSend(t *testing.T) {
 	const plainPwd = "MySecret99"
 	var capturedHash string
 	client := &mockUserClient{
-		createUserFunc: func(_ context.Context, req user_api2.CreateUserRequest) (*user_api2.UserResponse, error) {
+		createUserFunc: func(_ context.Context, req user_api.CreateUserRequest) (*user_api.UserResponse, error) {
 			capturedHash = req.PasswordHash
-			return &user_api2.UserResponse{ID: uuid.New(), Username: "u", Email: "u@e.com"}, nil
+			return &user_api.UserResponse{ID: uuid.New(), Username: "u", Email: "u@e.com"}, nil
 		},
 	}
 
@@ -179,9 +179,9 @@ func TestAuthUsecase_Login_Success(t *testing.T) {
 	hash := lowCostHash(t, "Password1")
 
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, email string) (*user_api2.UserResponse, error) {
+		getUserByEmailFunc: func(_ context.Context, email string) (*user_api.UserResponse, error) {
 			require.Equal(t, "message@example.com", email)
-			return &user_api2.UserResponse{ID: userID, Username: "message", Email: email, PasswordHash: hash}, nil
+			return &user_api.UserResponse{ID: userID, Username: "message", Email: email, PasswordHash: hash}, nil
 		},
 	}
 	store := &mockSessionStore{}
@@ -200,8 +200,8 @@ func TestAuthUsecase_Login_Success(t *testing.T) {
 func TestAuthUsecase_Login_GeneratesDeviceIDWhenNil(t *testing.T) {
 	hash := lowCostHash(t, "Password1")
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
-			return &user_api2.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
+		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api.UserResponse, error) {
+			return &user_api.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
 		},
 	}
 
@@ -227,7 +227,7 @@ func TestAuthUsecase_Login_GeneratesDeviceIDWhenNil(t *testing.T) {
 
 func TestAuthUsecase_Login_UserNotFound(t *testing.T) {
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
+		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api.UserResponse, error) {
 			return nil, errors.New("message not found")
 		},
 	}
@@ -245,8 +245,8 @@ func TestAuthUsecase_Login_UserNotFound(t *testing.T) {
 func TestAuthUsecase_Login_WrongPassword(t *testing.T) {
 	hash := lowCostHash(t, "CorrectPass1")
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
-			return &user_api2.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
+		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api.UserResponse, error) {
+			return &user_api.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
 		},
 	}
 
@@ -262,8 +262,8 @@ func TestAuthUsecase_Login_WrongPassword(t *testing.T) {
 func TestAuthUsecase_Login_SessionSaveFails(t *testing.T) {
 	hash := lowCostHash(t, "Password1")
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
-			return &user_api2.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
+		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api.UserResponse, error) {
+			return &user_api.UserResponse{ID: uuid.New(), PasswordHash: hash}, nil
 		},
 	}
 	store := &mockSessionStore{
@@ -286,8 +286,8 @@ func TestAuthUsecase_Login_TokenWrittenToResponse(t *testing.T) {
 	hash := lowCostHash(t, "Password1")
 	userID := uuid.New()
 	client := &mockUserClient{
-		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api2.UserResponse, error) {
-			return &user_api2.UserResponse{ID: userID, PasswordHash: hash}, nil
+		getUserByEmailFunc: func(_ context.Context, _ string) (*user_api.UserResponse, error) {
+			return &user_api.UserResponse{ID: userID, PasswordHash: hash}, nil
 		},
 	}
 

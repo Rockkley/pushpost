@@ -6,7 +6,7 @@ import (
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
-	"github.com/rockkley/pushpost/services/common_service/apperror"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"net/http"
 )
@@ -24,7 +24,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 
-		return apperror.BadRequest(apperror.CodeValidationFailed, "invalid JSON")
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
 
 	validationErrors := dto.ValidateRegisterUser(req)
@@ -35,7 +35,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 			errMap[err.Field] = err.Code
 		}
 
-		return apperror.ValidationFields(errMap)
+		return commonapperr.ValidationFields(errMap)
 	}
 
 	user, err := h.authUseCase.Register(r.Context(), req)
@@ -53,7 +53,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req dto.LoginUserDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 
-		return apperror.BadRequest(apperror.CodeValidationFailed, "invalid JSON")
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
 
 	//err := req.Validate()
@@ -62,6 +62,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	//	return err
 	//}
 	//
+
 	token, err := h.authUseCase.Login(r.Context(), req)
 
 	if err != nil {
@@ -77,7 +78,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	sessionID, ok := r.Context().Value(middleware.CtxSessionIDKey).(uuid.UUID)
 	if !ok {
 
-		return apperror.Unauthorized(apperror.CodeUnauthorized, "invalid session")
+		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "invalid session")
 	}
 
 	if err := h.authUseCase.Logout(r.Context(), sessionID); err != nil {

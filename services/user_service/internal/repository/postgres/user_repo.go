@@ -5,8 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/common_service/apperror"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/database"
+	"github.com/rockkley/pushpost/services/user_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 	"strings"
 	"time"
@@ -29,7 +30,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entity.User) error {
 		user.ID, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
-		return apperror.MapPostgresError(err, "create user_service")
+		return commonapperr.MapPostgresError(err, "create user_service", apperror.MapConstraint)
 	}
 
 	return nil
@@ -50,7 +51,7 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*entit
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.UserNotFound()
 		}
-		return nil, apperror.MapPostgresError(err, "find user_service by id")
+		return nil, commonapperr.MapPostgresError(err, "find user by id")
 	}
 
 	return &user, err
@@ -73,7 +74,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.InvalidCredentials()
 		}
-		return nil, apperror.MapPostgresError(err, "find user_service by email")
+		return nil, commonapperr.MapPostgresError(err, "get user by email")
 	}
 
 	return &user, err
@@ -95,7 +96,7 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.UserNotFound()
 		}
-		return nil, apperror.MapPostgresError(err, "find user_service by username")
+		return nil, commonapperr.MapPostgresError(err, "find user by username")
 	}
 
 	return &user, err
@@ -113,7 +114,7 @@ func (r *UserRepository) EmailExists(ctx context.Context, email string) (bool, e
 	err := r.exec.QueryRowContext(ctx, query, email).Scan(&exists)
 
 	if err != nil {
-		return false, apperror.MapPostgresError(err, "check email exists")
+		return false, commonapperr.MapPostgresError(err, "check email exists")
 	}
 
 	return exists, nil
@@ -131,7 +132,7 @@ func (r *UserRepository) UsernameExists(ctx context.Context, username string) (b
 	err := r.exec.QueryRowContext(ctx, query, username).Scan(&exists)
 
 	if err != nil {
-		return false, apperror.MapPostgresError(err, "check username exists")
+		return false, commonapperr.MapPostgresError(err, "check username exists")
 	}
 
 	return exists, nil
@@ -146,12 +147,12 @@ func (r *UserRepository) SoftDelete(ctx context.Context, userId uuid.UUID) error
 	result, err := r.exec.ExecContext(ctx, query, time.Now(), userId)
 
 	if err != nil {
-		return apperror.MapPostgresError(err, "soft delete user_service")
+		return commonapperr.MapPostgresError(err, "soft delete user")
 	}
 
 	rows, err := result.RowsAffected()
 	if err != nil {
-		return apperror.Database("failed to get rows affected", err)
+		return commonapperr.Internal("failed to get rows affected", err)
 	}
 
 	if rows == 0 {
