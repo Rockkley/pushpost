@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/rockkley/pushpost/clients/user_api"
 	"github.com/rockkley/pushpost/services/common_service/jwt"
 	"github.com/rockkley/pushpost/services/common_service/logger"
@@ -17,7 +18,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/rockkley/pushpost/services/auth_service/internal/config"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain/usecase"
-	"github.com/rockkley/pushpost/services/auth_service/internal/repository/memory"
+	redisrepo "github.com/rockkley/pushpost/services/auth_service/internal/repository/redis"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport"
 	myHTTP "github.com/rockkley/pushpost/services/auth_service/internal/transport/http"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
@@ -52,7 +53,20 @@ func main() {
 		os.Exit(1)
 	}
 
-	sessionStore := memory.NewSessionStore()
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	if err = rdb.Ping(context.Background()).Err(); err != nil {
+		appLog.Error("failed to connect to Redis", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	defer rdb.Close()
+
+	sessionStore := redisrepo.NewSessionStore(rdb, cfg.Redis.Timeout)
 	jwtManager := jwt.NewManager(cfg.JWT.Secret, &cfg.JWT.AccessTTL)
 	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, jwtManager)
 	authHandler := myHTTP.NewAuthHandler(authUsecase)

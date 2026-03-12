@@ -1,4 +1,3 @@
-// services/user_service/internal/apperror/errors.go
 package apperror
 
 import (

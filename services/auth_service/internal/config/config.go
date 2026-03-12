@@ -10,6 +10,7 @@ type Config struct {
 	HTTP    HTTPConfig
 	JWT     JWTConfig
 	UserSvc UserServiceConfig
+	Redis   RedisConfig
 }
 
 type HTTPConfig struct {
@@ -27,6 +28,13 @@ type JWTConfig struct {
 type UserServiceConfig struct {
 	BaseURL string        `env:"USER_SERVICE_URL"     env-required:"true"`
 	Timeout time.Duration `env:"USER_SERVICE_TIMEOUT" env-default:"5s"`
+}
+
+type RedisConfig struct {
+	Addr     string        `env:"REDIS_ADDR"     env-default:"localhost:6379"`
+	Password string        `env:"REDIS_PASSWORD" env-default:""`
+	DB       int           `env:"REDIS_DB"       env-default:"0"`
+	Timeout  time.Duration `env:"REDIS_TIMEOUT"  env-default:"5s"`
 }
 
 func Load() (*Config, error) {

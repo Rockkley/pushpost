@@ -31,15 +31,15 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("config: failed to read environment variables: %w", err)
 	}
 
-	if err := cfg.validate(&cfg); err != nil {
+	if err := cfg.validate(); err != nil {
 		return nil, fmt.Errorf("config: validation error: %w", err)
 	}
 
 	return &cfg, nil
 }
 
-func (c *Config) validate(cfg *Config) error {
-	if cfg.Database.MaxIdleConns > cfg.Database.MaxOpenConns {
+func (c *Config) validate() error {
+	if c.Database.MaxIdleConns > c.Database.MaxOpenConns {
 		return fmt.Errorf(
 			"max idle connections (%d) cannot exceed max open connections (%d)",
 			c.Database.MaxIdleConns, c.Database.MaxOpenConns,
