@@ -2,7 +2,7 @@
 -- +goose StatementBegin
 
 -- Таблица для заявок в друзья
-CREATE TABLE friend_requests
+CREATE TABLE friendship_requests
 (
     id          UUID PRIMARY KEY,
     sender_id   UUID        NOT NULL REFERENCES users (id) ON DELETE CASCADE,
@@ -11,14 +11,14 @@ CREATE TABLE friend_requests
     created_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
     updated_at  TIMESTAMP   NOT NULL DEFAULT NOW(),
 
-    CONSTRAINT unique_friend_request UNIQUE (sender_id, receiver_id),
+    CONSTRAINT unique_friendship_request UNIQUE (sender_id, receiver_id),
 
     CONSTRAINT no_self_request CHECK (sender_id != receiver_id)
 );
 
-CREATE INDEX idx_friend_requests_sender ON friendship_requests (sender_id, status);
-CREATE INDEX idx_friend_requests_receiver ON friendship_requests (receiver_id, status);
-CREATE INDEX idx_friend_requests_created ON friendship_requests (created_at DESC);
+CREATE INDEX idx_friendship_requests_sender ON friendship_requests (sender_id, status);
+CREATE INDEX idx_friendship_requests_receiver ON friendship_requests (receiver_id, status);
+CREATE INDEX idx_friendship_requests_created ON friendship_requests (created_at DESC);
 
 CREATE OR REPLACE FUNCTION update_updated_at_column()
     RETURNS TRIGGER AS $$
@@ -28,7 +28,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER update_friend_requests_updated_at
+CREATE TRIGGER update_friendship_requests_updated_at
     BEFORE UPDATE ON friendship_requests
     FOR EACH ROW
 EXECUTE FUNCTION update_updated_at_column();

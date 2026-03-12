@@ -13,7 +13,7 @@ import (
 
 const keyPrefix = "session:"
 
-var ErrSessionNotFound = "session not found"
+var ErrSessionNotFound = errors.New("session not found")
 
 type SessionStore struct {
 	redis   *redis.Client
@@ -56,7 +56,7 @@ func (s *SessionStore) Get(ctx context.Context, sessionID uuid.UUID) (*domain.Se
 	data, err := s.redis.Get(ctx, key(sessionID)).Bytes()
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
-			return nil, fmt.Errorf("%w: %s", errors.New(ErrSessionNotFound), sessionID)
+			return nil, fmt.Errorf("%w: %s", ErrSessionNotFound, sessionID)
 		}
 		return nil, fmt.Errorf("redis get session: %w", err)
 	}
