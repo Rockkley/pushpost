@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/rockkley/pushpost/services/common_service/logger"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
+	"github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	postgres2 "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
 	stdlog "log"
 	"log/slog"
@@ -56,12 +57,20 @@ func main() {
 	userHandler := myHTTP.NewUserHandler(userUseCase)
 	mux := transport.NewRouter(appLog, userHandler)
 
-	publisher := &noopPublisher{log: appLog}
+	kafkaPublisher := kafka.NewPublisher(cfg.Kafka.Brokers(), appLog)
+
+	defer func() {
+		if err = kafkaPublisher.Close(); err != nil {
+			appLog.Error("failed to close kafka publisher", slog.Any("error", err))
+		}
+	}()
+
+	//publisher := &noopPublisher{log: appLog}
 	workerRepo := postgres2.NewOutboxRepository(db)
 
 	outboxWorker := outbox.NewWorker(
 		workerRepo,
-		publisher,
+		kafkaPublisher,
 		outbox.DefaultWorkerConfig(),
 		appLog,
 	)

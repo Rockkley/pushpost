@@ -5,7 +5,7 @@ import "errors"
 type CreateUserRequestDTO struct {
 	Username     string `json:"username"`
 	Email        string `json:"email"`
-	PasswordHash string `json:"passwordHash"`
+	PasswordHash string `json:"password_hash"`
 }
 
 var (

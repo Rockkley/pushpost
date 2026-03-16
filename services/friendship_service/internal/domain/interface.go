@@ -1,4 +1,4 @@
-package internal
+package domain
 
 import (
 	"context"
@@ -6,7 +6,7 @@ import (
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/dto"
 )
 
-type FriendService interface {
+type FriendshipUseCase interface {
 	SendRequest(ctx context.Context, requestDTO dto.SendRequestDTO) error
 	AcceptRequest(ctx context.Context, dto dto.AcceptRequestDTO) error
 	RejectRequest(ctx context.Context, dto dto.RejectRequestDTO) error

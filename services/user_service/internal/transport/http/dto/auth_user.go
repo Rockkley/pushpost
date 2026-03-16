@@ -4,7 +4,7 @@ import "errors"
 
 type AuthenticateUserRequestDTO struct {
 	Email        string `json:"email"`
-	PasswordHash string `json:"passwordHash"`
+	PasswordHash string `json:"password_hash"`
 }
 
 func (dto *AuthenticateUserRequestDTO) Validate() error {
@@ -12,7 +12,7 @@ func (dto *AuthenticateUserRequestDTO) Validate() error {
 		return errors.New("email is required")
 	}
 	if dto.PasswordHash == "" {
-		return errors.New("passwordHash is required")
+		return errors.New("password_hash is required")
 	}
 	return nil
 }
