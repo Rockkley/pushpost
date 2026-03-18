@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package friendship.v1;
+
+option go_package = "github.com/rockkley/pushpost/services/friendship_service/gen/friendship/v1;friendshipv1";
+
+
+service FriendshipService {
+
+  rpc AreFriends(AreFriendsRequest) returns (AreFriendsResponse);
+
+  rpc GetFriendIDs(GetFriendIDsRequest) returns (GetFriendIDsResponse);
+}
+
+message AreFriendsRequest {
+  string user1_id = 1;
+  string user2_id = 2;
+}
+
+message AreFriendsResponse {
+  bool are_friends = 1;
+}
+
+message GetFriendIDsRequest {
+  string user_id = 1;
+}
+
+message GetFriendIDsResponse {
+  repeated string friend_ids = 1;
+}

@@ -3,15 +3,28 @@ package domain
 import (
 	"context"
 	"github.com/google/uuid"
-	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/dto"
+	"github.com/rockkley/pushpost/services/common_service/outbox"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
 )
 
 type FriendshipUseCase interface {
-	SendRequest(ctx context.Context, requestDTO dto.SendRequestDTO) error
-	AcceptRequest(ctx context.Context, dto dto.AcceptRequestDTO) error
-	RejectRequest(ctx context.Context, dto dto.RejectRequestDTO) error
-	CancelRequest(ctx context.Context, dto dto.CancelRequestDTO) error
-	DeleteFriendship(ctx context.Context, dto dto.DeleteFriendshipDTO) error
-	GetFriendsIDs(ctx context.Context, userID uuid.UUID) ([]*uuid.UUID, error)
+	SendRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
+	AcceptRequest(ctx context.Context, receiverID, senderID uuid.UUID) error
+	RejectRequest(ctx context.Context, receiverID, senderID uuid.UUID) error
+	CancelRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
+	DeleteFriendship(ctx context.Context, userID, friendID uuid.UUID) error
+	GetFriendsIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
+}
+
+type Tx interface {
+	Requests() repository.FriendshipRequestRepository
+	Friendships() repository.FriendshipRepository
+	Outbox() outbox.WriterInterface
+}
+
+type UnitOfWork interface {
+	Do(ctx context.Context, fn func(tx Tx) error) error
+	Requests() repository.FriendshipRequestRepository
+	Friendships() repository.FriendshipRepository
 }

@@ -26,14 +26,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -46,10 +49,12 @@ func main() {
 		MaxOpenConns: cfg.Database.MaxOpenConns,
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
+
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer db.Close()
 
 	uow := postgres.NewUnitOfWork(db)
@@ -82,7 +87,6 @@ func main() {
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
 
-	// ctx для воркера — живёт всё время работы сервиса
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

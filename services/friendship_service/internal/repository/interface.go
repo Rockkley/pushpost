@@ -7,14 +7,16 @@ import (
 )
 
 type FriendshipRequestRepository interface {
-	CreateRequest(ctx context.Context, request *entity.FriendshipRequest) error
-	AcceptRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
-	RejectRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
-	CancelRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
-	RequestExists(ctx context.Context, senderID, receiverID uuid.UUID) (bool, error)
+	Create(ctx context.Context, request *entity.FriendshipRequest) error
+	FindPending(ctx context.Context, senderID, receiverID uuid.UUID) (*entity.FriendshipRequest, error)
+	FindPendingBetween(ctx context.Context, user1, user2 uuid.UUID) (*entity.FriendshipRequest, error)
+	UpdateStatus(ctx context.Context, senderID, receiverID uuid.UUID, status entity.FriendshipReqStatus) error
+	Delete(ctx context.Context, senderID, receiverID uuid.UUID) error
 }
+
 type FriendshipRepository interface {
-	DeleteFriendship(ctx context.Context, userID, friendID uuid.UUID) error
-	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
-	GetFriendsIds(ctx context.Context, userID uuid.UUID) ([]*uuid.UUID, error)
+	Create(ctx context.Context, friendship *entity.Friendship) error
+	Exists(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
+	Delete(ctx context.Context, userID, user2 uuid.UUID) error
+	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
