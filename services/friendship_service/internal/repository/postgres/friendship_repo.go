@@ -22,7 +22,7 @@ func NewFriendshipRepository(exec database.Executor) repository.FriendshipReposi
 }
 
 func (r *friendshipRepo) Create(ctx context.Context, friendship *entity.Friendship) error {
-	u1, u2 := orderUUIDs(friendship.UserID1, friendship.UserID2)
+	u1, u2 := orderUUIDs(friendship.User1ID, friendship.User2ID)
 
 	query := `INSERT INTO friendships (id, user1_id, user2_id) VALUES ($1,$2,$3) RETURNING created_at`
 
@@ -33,7 +33,7 @@ func (r *friendshipRepo) Create(ctx context.Context, friendship *entity.Friendsh
 		return commonapperr.MapPostgresError(err, "create friendship", apperr.MapConstraint)
 	}
 
-	friendship.UserID1, friendship.UserID2 = u1, u2
+	friendship.User1ID, friendship.User2ID = u1, u2
 
 	return nil
 }
