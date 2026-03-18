@@ -1,4 +1,4 @@
-package services
+package usecase
 
 import (
 	"context"
@@ -11,7 +11,10 @@ import (
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"log/slog"
+	"time"
 )
+
+const cooldownDuration = 24 * time.Hour
 
 type FriendshipUseCase struct {
 	uow domain.UnitOfWork
@@ -50,6 +53,20 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 		if reqExists != nil {
 
 			return apperr.FriendRequestExists()
+		}
+
+		onCooldown, err := tx.Requests().HasRecentRejected(
+			ctx, senderID, receiverID, time.Now().Add(-cooldownDuration),
+		)
+
+		if err != nil {
+
+			return err
+		}
+
+		if onCooldown {
+
+			return apperr.RequestCooldown()
 		}
 
 		req := entity.FriendshipRequest{
@@ -219,7 +236,7 @@ func (uc *FriendshipUseCase) DeleteFriendship(ctx context.Context, userID, frien
 	return nil
 }
 
-func (uc *FriendshipUseCase) GetFriendsIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (uc *FriendshipUseCase) GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	return uc.uow.Friendships().GetFriendIDs(ctx, userID)
 
 }

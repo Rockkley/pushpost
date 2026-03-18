@@ -10,6 +10,7 @@ import (
 	apperr "github.com/rockkley/pushpost/services/friendship_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
+	"time"
 )
 
 type friendshipRequestRepository struct {
@@ -106,23 +107,25 @@ func (r *friendshipRequestRepository) UpdateStatus(
 	return nil
 }
 
-func (r *friendshipRequestRepository) Delete(ctx context.Context, senderID, receiverID uuid.UUID) error {
-	const query = `
-		DELETE FROM friendship_requests
-		WHERE  sender_id = $1 AND receiver_id = $2 AND status = 'pending'`
+func (r *friendshipRequestRepository) HasRecentRejected(
+	ctx context.Context,
+	senderID, receiverID uuid.UUID,
+	since time.Time,
+) (bool, error) {
+	query := `
+        SELECT EXISTS (
+            SELECT 1
+            FROM   friendship_requests
+            WHERE  sender_id   = $1
+              AND  receiver_id = $2
+              AND  status      = 'rejected'
+              AND  updated_at  > $3
+        )`
 
-	result, err := r.exec.ExecContext(ctx, query, senderID, receiverID)
-
+	var exists bool
+	err := r.exec.QueryRowContext(ctx, query, senderID, receiverID, since).Scan(&exists)
 	if err != nil {
-
-		return commonapperr.MapPostgresError(err, "delete friendship request")
+		return false, commonapperr.MapPostgresError(err, "check cooldown")
 	}
-	rows, _ := result.RowsAffected()
-
-	if rows == 0 {
-
-		return apperr.FriendRequestNotFound()
-	}
-
-	return nil
+	return exists, nil
 }

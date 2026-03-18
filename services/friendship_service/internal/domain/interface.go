@@ -13,7 +13,7 @@ type FriendshipUseCase interface {
 	RejectRequest(ctx context.Context, receiverID, senderID uuid.UUID) error
 	CancelRequest(ctx context.Context, senderID, receiverID uuid.UUID) error
 	DeleteFriendship(ctx context.Context, userID, friendID uuid.UUID) error
-	GetFriendsIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
 }
 

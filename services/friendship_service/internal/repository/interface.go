@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
+	"time"
 )
 
 type FriendshipRequestRepository interface {
@@ -11,12 +12,12 @@ type FriendshipRequestRepository interface {
 	FindPending(ctx context.Context, senderID, receiverID uuid.UUID) (*entity.FriendshipRequest, error)
 	FindPendingBetween(ctx context.Context, user1, user2 uuid.UUID) (*entity.FriendshipRequest, error)
 	UpdateStatus(ctx context.Context, senderID, receiverID uuid.UUID, status entity.FriendshipReqStatus) error
-	Delete(ctx context.Context, senderID, receiverID uuid.UUID) error
+	HasRecentRejected(ctx context.Context, senderID, receiverID uuid.UUID, since time.Time) (bool, error)
 }
 
 type FriendshipRepository interface {
 	Create(ctx context.Context, friendship *entity.Friendship) error
 	Exists(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
-	Delete(ctx context.Context, userID, user2 uuid.UUID) error
+	Delete(ctx context.Context, userID, friendID uuid.UUID) error
 	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }

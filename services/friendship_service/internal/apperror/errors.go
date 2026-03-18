@@ -28,6 +28,10 @@ func FriendRequestNotPending() apperror.AppError {
 	return apperror.BadRequest(CodeFriendRequestNotPending, "friend request is no longer pending")
 }
 
+func RequestCooldown() apperror.AppError {
+	return apperror.BadRequest(CodeRequestCooldown, "you must wait before sending another request to this user")
+}
+
 // -- Postgres constraint mapper
 
 func MapConstraint(constraintName string) apperror.AppError {
