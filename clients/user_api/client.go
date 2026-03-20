@@ -44,7 +44,7 @@ func NewUserClient(baseURL string, httpClient *http.Client) (*UserClient, error)
 }
 
 func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*UserResponse, error) {
-	endpoint, err := url.JoinPath(c.baseURL, "user")
+	endpoint, err := url.JoinPath(c.baseURL, "users")
 
 	if err != nil {
 
