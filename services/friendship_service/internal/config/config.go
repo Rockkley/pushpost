@@ -13,7 +13,6 @@ type Config struct {
 	GRPC     GRPCConfig
 	Database DatabaseConfig
 	Kafka    KafkaConfig
-	JWT      JWTConfig
 }
 
 type HTTPConfig struct {
@@ -37,8 +36,6 @@ type KafkaConfig struct {
 	BrokersRaw string `env:"KAFKA_BROKERS" env-default:"kafka:9092"`
 }
 
-// JWTConfig holds the shared secret used to validate tokens issued by auth_service.
-// friendship_service NEVER generates tokens — it only validates them.
 type JWTConfig struct {
 	Secret string `env:"JWT_SECRET" env-required:"true"`
 }
@@ -60,9 +57,6 @@ func (c *Config) validate() error {
 			"max idle connections (%d) cannot exceed max open connections (%d)",
 			c.Database.MaxIdleConns, c.Database.MaxOpenConns,
 		)
-	}
-	if len(c.JWT.Secret) < 32 {
-		return fmt.Errorf("jwt_secret must be at least 32 characters, got %d", len(c.JWT.Secret))
 	}
 	return nil
 }

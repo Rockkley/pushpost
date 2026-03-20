@@ -32,6 +32,10 @@ func AccountDeleted() apperror.AppError {
 	return apperror.Forbidden(CodeAccountDeleted, "account has been deleted")
 }
 
+func UsernameReserved() apperror.AppError {
+	return apperror.Conflict(CodeUsernameReserved, "username", "this username is reserved")
+}
+
 // -- Postgres constraint mapper
 
 func MapConstraint(constraintName string) apperror.AppError {

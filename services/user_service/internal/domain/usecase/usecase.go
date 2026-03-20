@@ -6,6 +6,7 @@ import (
 	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
+	"github.com/rockkley/pushpost/services/user_service/internal/reserved"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -30,6 +31,10 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 	if err := req.Validate(); err != nil {
 		log.Debug("dto validation failed", slog.Any("error", err))
 		return nil, err
+	}
+
+	if reserved.IsReserved(req.Username) {
+		return nil, apperr.UsernameReserved()
 	}
 
 	user := &entity.User{
@@ -133,4 +138,29 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 
 	log.Info("user deleted")
 	return nil
+}
+
+func (u *UserUseCase) GetUserByUsername(ctx context.Context, username string) (*entity.User, error) {
+	log := ctxlog.From(ctx).With(
+		slog.String("op", "UserUseCase.GetUserByUsername"),
+		slog.String("username", username),
+	)
+
+	if username == "" {
+		return nil, commonapperr.Validation(
+			commonapperr.CodeFieldRequired, "username", "username is required",
+		)
+	}
+
+	user, err := u.uow.Reader().FindByUsername(ctx, username)
+	if err != nil {
+		log.Debug("user not found by username", slog.Any("error", err))
+		return nil, err
+	}
+
+	if user.IsDeleted() {
+		return nil, apperr.UserNotFound()
+	}
+
+	return user, nil
 }

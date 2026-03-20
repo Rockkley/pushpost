@@ -2,14 +2,15 @@ package http
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
-	"github.com/rockkley/pushpost/services/common_service/middleware"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/middleware"
 )
 
 type FriendshipHandler struct {
@@ -107,12 +108,17 @@ func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *FriendshipHandler) GetFriendIDs(w http.ResponseWriter, r *http.Request) error {
+	slog.Default().Info("TEST: GetFriendIDs called")
 	userID, err := requireUserID(r)
+	slog.Default().Info("TEST: requireUserID result",
+		slog.Any("userID", userID),
+		slog.Any("err", err),
+	)
 	if err != nil {
 		return err
 	}
 
-	ids, err := h.uc.GetFriendsIDs(r.Context(), userID)
+	ids, err := h.uc.GetFriendIDs(r.Context(), userID)
 	if err != nil {
 		return err
 	}

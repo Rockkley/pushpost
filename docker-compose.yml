@@ -46,31 +46,19 @@ services:
     volumes:
       - kafka_data:/var/lib/kafka/data
     healthcheck:
-      test: [ "CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list" ]
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
-#  migrate:
-#    image: gomicro/goose
-#    volumes:
-#      - ./migrations:/migrations
-#    environment:
-#      GOOSE_DRIVER: postgres
-#      GOOSE_DBSTRING: "postgres://postgres:postgres@postgres:5432/pushpost?sslmode=disable"
-#    command: ["goose", "-dir", "/migrations", "up"]
-#    depends_on:
-#      postgres:
-#        condition: service_healthy
-#    restart: on-failure
 
   user-service:
     build:
       context: .
       dockerfile: services/user_service/Dockerfile
     env_file: services/user_service/.env
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -80,22 +68,39 @@ services:
       context: .
       dockerfile: services/auth_service/Dockerfile
     env_file: services/auth_service/.env
-    ports:
-      - "8081:8081"
+    expose:
+      - "8081"
     depends_on:
-      - redis
-      - user-service
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_started
 
   friendship-service:
     build:
       context: .
       dockerfile: services/friendship_service/Dockerfile
     env_file: services/friendship_service/.env
-    ports:
-      - "8082:8082"
+    expose:
+      - "8082"   # HTTP — только внутри сети
+      - "9082"   # gRPC — только внутри сети
     depends_on:
-      - redis
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api_gateway/Dockerfile
+    env_file: services/api_gateway/.env
+    ports:
+      - "8000:8000"   # единственный открытый наружу порт
+    depends_on:
+      - auth-service
       - user-service
+      - friendship-service
 
 volumes:
   postgres_data:

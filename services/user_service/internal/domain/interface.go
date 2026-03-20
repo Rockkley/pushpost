@@ -14,6 +14,7 @@ type UserUseCaseInterface interface {
 	GetUserByEmail(ctx context.Context, email string) (*entity.User, error)
 	DeleteUser(ctx context.Context, userID uuid.UUID) error
 	GetUserByID(ctx context.Context, id uuid.UUID) (*entity.User, error)
+	GetUserByUsername(ctx context.Context, username string) (*entity.User, error)
 }
 
 type Tx interface {

@@ -16,9 +16,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/rockkley/pushpost/services/common_service/database"
-	"github.com/rockkley/pushpost/services/common_service/jwt"
 	"github.com/rockkley/pushpost/services/common_service/logger"
-	commonmw "github.com/rockkley/pushpost/services/common_service/middleware"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
@@ -84,10 +82,8 @@ func main() {
 	go outboxWorker.Run(workerCtx)
 
 	// HTTP server
-	jwtManager := jwt.NewManager(cfg.JWT.Secret, nil)
-	authMW := commonmw.NewJwtAuthMiddleware(jwtManager)
 	httpHandler := friendhttp.NewFriendshipHandler(friendUseCase)
-	mux := router.NewRouter(appLog, authMW, httpHandler)
+	mux := router.NewRouter(appLog, httpHandler)
 
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),

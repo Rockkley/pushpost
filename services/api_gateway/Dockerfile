@@ -7,15 +7,14 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -ldflags="-w -s" \
-    -o /out/friendship-service ./services/friendship_service/cmd/friendship
+    -o /out/api-gateway ./services/api_gateway/cmd/gateway
 
 FROM alpine:3.20
 RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /service
 
-COPY --from=builder /out/friendship-service /usr/local/bin/friendship-service
+COPY --from=builder /out/api-gateway /usr/local/bin/api-gateway
 
-EXPOSE 8082
-EXPOSE 9082
+EXPOSE 8000
 
-ENTRYPOINT ["/usr/local/bin/friendship-service"]
+ENTRYPOINT ["/usr/local/bin/api-gateway"]

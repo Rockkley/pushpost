@@ -88,13 +88,33 @@ func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) err
 func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) error {
 	rawID := chi.URLParam(r, "id")
 	id, err := uuid.Parse(rawID)
+
 	if err != nil {
+
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid user id")
 	}
 
 	user, err := h.userUseCase.GetUserByID(r.Context(), id)
+
 	if err != nil {
-		return err // UserNotFound / UserDeleted — пробрасываем
+
+		return err // UserNotFound / UserDeleted
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, user)
+}
+
+func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) error {
+	username := chi.URLParam(r, "username")
+	if username == "" {
+		return commonapperr.Validation(
+			commonapperr.CodeFieldRequired, "username", "username is required",
+		)
+	}
+
+	user, err := h.userUseCase.GetUserByUsername(r.Context(), username)
+	if err != nil {
+		return err
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, user)
