@@ -18,8 +18,8 @@ func (dto *LoginUserDTO) Validate() error {
 	if dto.Password == "" {
 		return errors.New("password is required")
 	}
-	if dto.DeviceID == uuid.Nil {
-		return errors.New("device ID is required")
-	}
+	//if dto.DeviceID == uuid.Nil {
+	//	return errors.New("device ID is required")
+	//}
 	return nil
 }

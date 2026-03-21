@@ -18,7 +18,6 @@ import (
 
 type UserUseCase struct {
 	uow domain.UnitOfWorkInterface
-	//userRepo repository.UserRepositoryInterface
 }
 
 func NewUserUseCase(uow domain.UnitOfWorkInterface) *UserUseCase {

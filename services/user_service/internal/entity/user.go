@@ -10,9 +10,9 @@ type User struct {
 	Username     string     `json:"username"`
 	Email        string     `json:"email"`
 	PasswordHash string     `json:"password_hash"`
-	CreatedAt    time.Time  `json:"createdAt"`
-	UpdatedAt    time.Time  `json:"updatedAt"`
-	DeletedAt    *time.Time `json:"deletedAt,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
+	UpdatedAt    time.Time  `json:"updated_at"`
+	DeletedAt    *time.Time `json:"deleted_at,omitempty"`
 }
 
 func (u *User) IsDeleted() bool {

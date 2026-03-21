@@ -3,18 +3,11 @@ package domain
 import (
 	"context"
 	"errors"
-	"github.com/google/uuid"
-	"time"
+	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
 )
 
 var ErrProfileNotFound = errors.New("profile not found")
 
 type ProfileUseCase interface {
-	GetByUsername(ctx context.Context, username string) (*Profile, error)
-}
-
-type Profile struct {
-	UserID    uuid.UUID
-	Username  string
-	CreatedAt time.Time
+	GetByUsername(ctx context.Context, username string) (*entity.Profile, error)
 }

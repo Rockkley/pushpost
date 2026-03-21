@@ -36,10 +36,7 @@ func main() {
 	}
 
 	cfg, err := config.Load()
-	slog.Info("config loaded",
-		slog.Int("jwt_secret_len", len(cfg.JWT.Secret)),
-		slog.String("jwt_secret_prefix", cfg.JWT.Secret[:4]),
-	)
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}

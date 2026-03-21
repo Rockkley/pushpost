@@ -56,12 +56,11 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
 
-	//err := req.Validate()
-	//
-	//if err != nil {
-	//	return err
-	//}
-	//
+	err := req.Validate()
+
+	if err != nil {
+		return err
+	}
 
 	token, err := h.authUseCase.Login(r.Context(), req)
 

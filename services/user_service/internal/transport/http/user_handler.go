@@ -29,8 +29,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := req.Validate(); err != nil {
-
-		return err
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, err.Error())
 	}
 
 	user, err := h.userUseCase.CreateUser(r.Context(), *mapper.CreateUserFromRequestToUseCase(req))
@@ -106,14 +105,18 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) error 
 
 func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) error {
 	username := chi.URLParam(r, "username")
+
 	if username == "" {
+
 		return commonapperr.Validation(
 			commonapperr.CodeFieldRequired, "username", "username is required",
 		)
 	}
 
 	user, err := h.userUseCase.GetUserByUsername(r.Context(), username)
+
 	if err != nil {
+
 		return err
 	}
 

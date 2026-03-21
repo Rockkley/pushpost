@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -157,29 +158,42 @@ func (h *FriendshipHandler) AreFriends(w http.ResponseWriter, r *http.Request) e
 
 func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Request) error {
 	viewerID, err := requireUserID(r)
+
 	if err != nil {
+
 		return err
 	}
 	targetID, err := parsePathUUID(r, "userID")
 	if err != nil {
+
 		return err
 	}
 
 	rel, err := h.uc.GetFriendshipStatus(r.Context(), viewerID, targetID)
+
 	if err != nil {
+
 		return err
 	}
 
+	status := &entity.FriendshipStatus{}
+	if rel != nil {
+
+		status = rel
+	}
+
 	return httperror.WriteJSON(w, http.StatusOK, map[string]bool{
-		"are_friends":              rel.AreFriends,
-		"pending_request_sent":     rel.PendingRequestSent,
-		"pending_request_received": rel.PendingRequestReceived,
+		"are_friends":              status.AreFriends,
+		"pending_request_sent":     status.PendingRequestSent,
+		"pending_request_received": status.PendingRequestReceived,
 	})
 }
 
 func requireUserID(r *http.Request) (uuid.UUID, error) {
 	userID, ok := r.Context().Value(middleware.CtxUserIDKey).(uuid.UUID)
+
 	if !ok || userID == uuid.Nil {
+
 		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing authenticated user")
 	}
 	return userID, nil
@@ -187,7 +201,9 @@ func requireUserID(r *http.Request) (uuid.UUID, error) {
 
 func parsePathUUID(r *http.Request, param string) (uuid.UUID, error) {
 	id, err := uuid.Parse(chi.URLParam(r, param))
+
 	if err != nil {
+
 		return uuid.Nil, commonapperr.BadRequest(
 			commonapperr.CodeFieldInvalid, "invalid "+param+" — must be a UUID",
 		)

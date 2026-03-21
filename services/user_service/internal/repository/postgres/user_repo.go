@@ -30,6 +30,7 @@ func (r *UserRepository) Create(ctx context.Context, user *entity.User) error {
 		user.ID, user.Username, user.Email, user.PasswordHash).Scan(&user.CreatedAt, &user.UpdatedAt)
 
 	if err != nil {
+
 		return commonapperr.MapPostgresError(err, "create user_service", apperror.MapConstraint)
 	}
 
@@ -49,8 +50,10 @@ func (r *UserRepository) FindByID(ctx context.Context, userId uuid.UUID) (*entit
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+
 			return nil, apperror.UserNotFound()
 		}
+
 		return nil, commonapperr.MapPostgresError(err, "find user by id")
 	}
 
@@ -72,8 +75,10 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+
 			return nil, apperror.InvalidCredentials()
 		}
+
 		return nil, commonapperr.MapPostgresError(err, "get user by email")
 	}
 
@@ -81,11 +86,11 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entity.User, error) {
-	username = strings.ToLower(strings.TrimSpace(username))
+	username = strings.TrimSpace(username)
 	query := `
 			SELECT id, username, email, password_hash, created_at, deleted_at
 			FROM users
-			WHERE username = $1 AND deleted_at IS NULL`
+			WHERE LOWER(username) = LOWER($1) AND deleted_at IS NULL`
 
 	var user entity.User
 
@@ -93,9 +98,12 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 		&user.ID, &user.Username, &user.Email, &user.PasswordHash, &user.CreatedAt, &user.DeletedAt)
 
 	if err != nil {
+
 		if errors.Is(err, sql.ErrNoRows) {
+
 			return nil, apperror.UserNotFound()
 		}
+
 		return nil, commonapperr.MapPostgresError(err, "find user by username")
 	}
 
