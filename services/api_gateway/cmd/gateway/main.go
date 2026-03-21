@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/rockkley/pushpost/clients/friendship_api"
+	"github.com/rockkley/pushpost/clients/profile_api"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/transport"
+	myHTTP "github.com/rockkley/pushpost/services/api_gateway/internal/transport/http"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -59,25 +62,35 @@ func main() {
 		os.Exit(1)
 	}
 
-	userByUsernameProxy, err := proxy.NewStrippingAuthWithRewrite(
-		cfg.Services.UserService,
-		timeout,
-		transport.RewriteUsernameToPath,
-	)
+	profileClient, err := profile_api.NewProfileClient(cfg.Services.ProfileService, &http.Client{Timeout: timeout})
+
 	if err != nil {
-		appLog.Error("failed to create user-by-username proxy", slog.Any("error", err))
+		appLog.Error("failed to create profile client", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	friendshipClient, err := friendship_api.NewFriendshipClient(
+		cfg.Services.FriendshipService,
+		&http.Client{Timeout: timeout},
+	)
+
+	if err != nil {
+		appLog.Error("failed to create friendship client", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	jwtManager := jwt.NewManager(cfg.JWT.Secret, nil)
 	authMW := gwmiddleware.NewAuthMiddleware(jwtManager)
+	profileHandler := myHTTP.NewProfileHandler(myHTTP.ProfileHandlerDeps{
+		ProfileClient:    profileClient,
+		FriendshipClient: friendshipClient,
+	})
 
 	mux := transport.NewRouter(appLog, authMW, transport.Proxies{
-		Auth:           authProxy,
-		User:           userProxy,
-		Friendship:     friendshipProxy,
-		UserByUsername: userByUsernameProxy,
-	})
+		Auth:       authProxy,
+		User:       userProxy,
+		Friendship: friendshipProxy,
+	}, *profileHandler)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
@@ -87,6 +100,7 @@ func main() {
 	}
 
 	serverErr := make(chan error, 1)
+
 	go func() {
 		appLog.Info("api gateway started", slog.String("port", cfg.HTTP.Port))
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {

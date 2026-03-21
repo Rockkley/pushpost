@@ -82,13 +82,23 @@ services:
       dockerfile: services/friendship_service/Dockerfile
     env_file: services/friendship_service/.env
     expose:
-      - "8082"   # HTTP — только внутри сети
-      - "9082"   # gRPC — только внутри сети
+      - "8082"   # HTTP
+      - "9082"   # gRPC
     depends_on:
       postgres:
         condition: service_healthy
       kafka:
         condition: service_healthy
+
+  profile-service:
+    build:
+      context: .
+      dockerfile: services/profile_service/Dockerfile
+    env_file: services/profile_service/.env
+    expose:
+      - "8083"
+    depends_on:
+      - user-service
 
   api-gateway:
     build:
@@ -96,11 +106,12 @@ services:
       dockerfile: services/api_gateway/Dockerfile
     env_file: services/api_gateway/.env
     ports:
-      - "8000:8000"   # единственный открытый наружу порт
+      - "8000:8000"
     depends_on:
       - auth-service
       - user-service
       - friendship-service
+      - profile-service
 
 volumes:
   postgres_data:

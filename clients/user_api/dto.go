@@ -1,6 +1,9 @@
 package user_api
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+	"time"
+)
 
 type CreateUserRequest struct {
 	Username     string `json:"username"`
@@ -13,9 +16,5 @@ type UserResponse struct {
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
-}
-
-type AuthenticateUserDTO struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	CreatedAt    time.Time `json:"createdAt"`
 }

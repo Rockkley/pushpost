@@ -48,7 +48,9 @@ func NewStrippingAuthWithRewrite(
 	rewrite func(path string) string,
 ) (*httputil.ReverseProxy, error) {
 	target, err := url.Parse(upstreamURL)
+
 	if err != nil {
+
 		return nil, err
 	}
 
@@ -57,7 +59,9 @@ func NewStrippingAuthWithRewrite(
 			r.SetURL(target)
 			r.Out.Header.Set("X-Forwarded-Host", r.In.Host)
 			r.Out.Header.Del("Authorization")
+
 			if rewrite != nil {
+
 				r.Out.URL.Path = rewrite(r.In.URL.Path)
 			}
 		},

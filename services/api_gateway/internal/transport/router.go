@@ -5,6 +5,8 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/middleware"
+	myHTTP "github.com/rockkley/pushpost/services/api_gateway/internal/transport/http"
+	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
 	"log/slog"
 	"net/http"
@@ -13,10 +15,9 @@ import (
 )
 
 type Proxies struct {
-	Auth           *httputil.ReverseProxy
-	User           *httputil.ReverseProxy
-	Friendship     *httputil.ReverseProxy
-	UserByUsername *httputil.ReverseProxy
+	Auth       *httputil.ReverseProxy
+	User       *httputil.ReverseProxy
+	Friendship *httputil.ReverseProxy
 }
 
 func RewriteUsernameToPath(path string) string {
@@ -26,7 +27,10 @@ func RewriteUsernameToPath(path string) string {
 
 func NewRouter(
 	log *slog.Logger,
-	authMW *middleware.AuthMiddleware, p Proxies) *chi.Mux {
+	authMW *middleware.AuthMiddleware,
+	p Proxies,
+	profileHandler myHTTP.ProfileHandler,
+) *chi.Mux {
 
 	r := chi.NewRouter()
 
@@ -51,7 +55,11 @@ func NewRouter(
 		r.Handle("/friends/*", http.HandlerFunc(p.Friendship.ServeHTTP))
 	})
 
-	r.Get("/{username}/", p.UserByUsername.ServeHTTP)
+	r.Group(func(r chi.Router) {
+		r.Use(authMW.OptionalAuth)
+		r.Get("/{username}", handlerhttp.MakeHandler(profileHandler.GetProfileByUsername))
+		r.Get("/{username}/", handlerhttp.MakeHandler(profileHandler.GetProfileByUsername))
+	})
 
 	return r
 }

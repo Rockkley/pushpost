@@ -27,6 +27,7 @@ type ServicesConfig struct {
 	AuthService       string        `env:"AUTH_SERVICE_URL"       env-required:"true"`
 	UserService       string        `env:"USER_SERVICE_URL"       env-required:"true"`
 	FriendshipService string        `env:"FRIENDSHIP_SERVICE_URL" env-required:"true"`
+	ProfileService    string        `env:"PROFILE_SERVICE_URL"    env-required:"true"`
 	Timeout           time.Duration `env:"UPSTREAM_TIMEOUT"       env-default:"10s"`
 }
 

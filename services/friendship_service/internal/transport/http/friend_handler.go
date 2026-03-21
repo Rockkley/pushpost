@@ -2,7 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -96,7 +95,7 @@ func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Requ
 	if err != nil {
 		return err
 	}
-	friendID, err := parsePathUUID(r, "friendID")
+	friendID, err := parsePathUUID(r, "userID")
 	if err != nil {
 		return err
 	}
@@ -108,23 +107,24 @@ func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *FriendshipHandler) GetFriendIDs(w http.ResponseWriter, r *http.Request) error {
-	slog.Default().Info("TEST: GetFriendIDs called")
 	userID, err := requireUserID(r)
-	slog.Default().Info("TEST: requireUserID result",
-		slog.Any("userID", userID),
-		slog.Any("err", err),
-	)
+
 	if err != nil {
+
 		return err
 	}
 
 	ids, err := h.uc.GetFriendIDs(r.Context(), userID)
+
 	if err != nil {
+
 		return err
 	}
+
 	if ids == nil {
 		ids = []uuid.UUID{}
 	}
+
 	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
 		"friend_ids": ids,
 		"count":      len(ids),
@@ -134,18 +134,47 @@ func (h *FriendshipHandler) GetFriendIDs(w http.ResponseWriter, r *http.Request)
 func (h *FriendshipHandler) AreFriends(w http.ResponseWriter, r *http.Request) error {
 	userID, err := requireUserID(r)
 	if err != nil {
+
 		return err
 	}
-	friendID, err := parsePathUUID(r, "friendID")
+
+	friendID, err := parsePathUUID(r, "userID")
+
 	if err != nil {
+
 		return err
 	}
 
 	ok, err := h.uc.AreFriends(r.Context(), userID, friendID)
+
+	if err != nil {
+
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]bool{"are_friends": ok})
+}
+
+func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Request) error {
+	viewerID, err := requireUserID(r)
 	if err != nil {
 		return err
 	}
-	return httperror.WriteJSON(w, http.StatusOK, map[string]bool{"are_friends": ok})
+	targetID, err := parsePathUUID(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	rel, err := h.uc.GetFriendshipStatus(r.Context(), viewerID, targetID)
+	if err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]bool{
+		"are_friends":              rel.AreFriends,
+		"pending_request_sent":     rel.PendingRequestSent,
+		"pending_request_received": rel.PendingRequestReceived,
+	})
 }
 
 func requireUserID(r *http.Request) (uuid.UUID, error) {

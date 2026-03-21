@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
 )
 
@@ -15,6 +16,7 @@ type FriendshipUseCase interface {
 	DeleteFriendship(ctx context.Context, userID, friendID uuid.UUID) error
 	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
+	GetFriendshipStatus(ctx context.Context, viewerID, targetID uuid.UUID) (*entity.FriendshipStatus, error)
 }
 
 type Tx interface {

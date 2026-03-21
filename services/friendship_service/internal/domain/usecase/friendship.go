@@ -104,6 +104,29 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 	return nil
 }
 
+func (uc *FriendshipUseCase) GetFriendshipStatus(ctx context.Context, viewerID, targetID uuid.UUID) (*entity.FriendshipStatus, error) {
+	areFriends, err := uc.uow.Friendships().Exists(ctx, viewerID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if areFriends {
+		return &entity.FriendshipStatus{AreFriends: true}, nil
+	}
+
+	req, err := uc.uow.Requests().FindPendingBetween(ctx, viewerID, targetID)
+	if err != nil {
+		return nil, err
+	}
+	if req == nil {
+		return nil, nil
+	}
+
+	return &entity.FriendshipStatus{
+		PendingRequestSent:     req.SenderID == viewerID,
+		PendingRequestReceived: req.ReceiverID == viewerID,
+	}, nil
+}
+
 func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, senderID uuid.UUID) error {
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Requests().UpdateStatus(ctx, senderID, receiverID, entity.ReqStatusAccepted); err != nil {
