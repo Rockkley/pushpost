@@ -8,6 +8,7 @@ import (
 	"github.com/rockkley/pushpost/services/user_service/internal/domain"
 	"github.com/rockkley/pushpost/services/user_service/internal/reserved"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
@@ -38,7 +39,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 
 	user := &entity.User{
 		ID:           uuid.New(),
-		Username:     req.Username,
+		Username:     strings.ToLower(strings.TrimSpace(req.Username)),
 		Email:        req.Email,
 		PasswordHash: req.PasswordHash,
 	}
