@@ -42,6 +42,8 @@ func MapConstraint(constraintName string) apperror.AppError {
 		return AlreadyFriends()
 	case "friendship_requests_unique_pending":
 		return FriendRequestExists()
+	case "friendships_ordered_users":
+		return apperror.Internal("friendship ordering constraint violated", nil)
 	default:
 		return nil // return nil = pass control to generic mapper
 	}

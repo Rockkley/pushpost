@@ -17,6 +17,7 @@ type FriendshipUseCase interface {
 	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
 	GetFriendshipStatus(ctx context.Context, viewerID, targetID uuid.UUID) (*entity.FriendshipStatus, error)
+	GetIncomingRequests(ctx context.Context, userID uuid.UUID) ([]*entity.FriendshipRequest, error)
 }
 
 type Tx interface {

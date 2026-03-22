@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -186,6 +187,40 @@ func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Reque
 		"are_friends":              status.AreFriends,
 		"pending_request_sent":     status.PendingRequestSent,
 		"pending_request_received": status.PendingRequestReceived,
+	})
+}
+
+func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.Request) error {
+	receiverID, err := requireUserID(r)
+	if err != nil {
+
+		return err
+	}
+
+	reqs, err := h.uc.GetIncomingRequests(r.Context(), receiverID)
+	if err != nil {
+
+		return err
+	}
+
+	type item struct {
+		RequestID string `json:"request_id"`
+		SenderID  string `json:"sender_id"`
+		CreatedAt string `json:"created_at"`
+	}
+
+	items := make([]item, 0, len(reqs))
+	for _, req := range reqs {
+		items = append(items, item{
+			RequestID: req.ID.String(),
+			SenderID:  req.SenderID.String(),
+			CreatedAt: req.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
+		"requests": items,
+		"count":    len(items),
 	})
 }
 

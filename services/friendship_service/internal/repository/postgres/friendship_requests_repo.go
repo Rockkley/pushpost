@@ -129,3 +129,40 @@ func (r *friendshipRequestRepository) HasRecentRejected(
 	}
 	return exists, nil
 }
+
+func (r *friendshipRequestRepository) GetIncoming(
+	ctx context.Context,
+	receiverID uuid.UUID,
+) ([]*entity.FriendshipRequest, error) {
+	query := `
+		SELECT id, sender_id, receiver_id, status, created_at, updated_at
+		FROM   friendship_requests
+		WHERE  receiver_id = $1
+		  AND  status      = 'pending'
+		ORDER BY created_at DESC`
+
+	rows, err := r.exec.QueryContext(ctx, query, receiverID)
+	if err != nil {
+
+		return nil, commonapperr.MapPostgresError(err, "get incoming requests")
+	}
+	defer rows.Close()
+
+	var result []*entity.FriendshipRequest
+	for rows.Next() {
+		var req entity.FriendshipRequest
+		if err = rows.Scan(
+			&req.ID, &req.SenderID, &req.ReceiverID,
+			&req.Status, &req.CreatedAt, &req.UpdatedAt,
+		); err != nil {
+
+			return nil, commonapperr.MapPostgresError(err, "scan incoming request")
+		}
+		result = append(result, &req)
+	}
+	if err = rows.Err(); err != nil {
+
+		return nil, commonapperr.MapPostgresError(err, "iterate incoming requests")
+	}
+	return result, nil
+}

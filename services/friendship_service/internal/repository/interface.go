@@ -13,6 +13,7 @@ type FriendshipRequestRepository interface {
 	FindPendingBetween(ctx context.Context, user1, user2 uuid.UUID) (*entity.FriendshipRequest, error)
 	UpdateStatus(ctx context.Context, senderID, receiverID uuid.UUID, status entity.FriendshipReqStatus) error
 	HasRecentRejected(ctx context.Context, senderID, receiverID uuid.UUID, since time.Time) (bool, error)
+	GetIncoming(ctx context.Context, receiverID uuid.UUID) ([]*entity.FriendshipRequest, error)
 }
 
 type FriendshipRepository interface {

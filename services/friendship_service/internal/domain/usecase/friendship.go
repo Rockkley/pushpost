@@ -268,6 +268,13 @@ func (uc *FriendshipUseCase) AreFriends(ctx context.Context, user1, user2 uuid.U
 	return uc.uow.Friendships().Exists(ctx, user1, user2)
 }
 
+func (uc *FriendshipUseCase) GetIncomingRequests(
+	ctx context.Context,
+	userID uuid.UUID,
+) ([]*entity.FriendshipRequest, error) {
+	return uc.uow.Requests().GetIncoming(ctx, userID)
+}
+
 func marshalPayload(v any) ([]byte, error) {
 	b, err := json.Marshal(v)
 	if err != nil {

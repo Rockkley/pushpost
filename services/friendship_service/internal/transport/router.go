@@ -20,6 +20,7 @@ func NewRouter(log *slog.Logger, h *myHTTP.FriendshipHandler) *chi.Mux {
 	r.Use(middleware.RequireUserID)
 
 	r.Post("/friends/requests", handlerhttp.MakeHandler(h.SendRequest))
+	r.Get("/friends/requests/incoming", handlerhttp.MakeHandler(h.GetIncomingRequests))
 	r.Post("/friends/requests/{senderID}/accept", handlerhttp.MakeHandler(h.AcceptRequest))
 	r.Post("/friends/requests/{senderID}/reject", handlerhttp.MakeHandler(h.RejectRequest))
 	r.Delete("/friends/requests/{receiverID}", handlerhttp.MakeHandler(h.CancelRequest))
