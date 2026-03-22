@@ -3,6 +3,7 @@ package httperror
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -18,15 +19,21 @@ type ErrorResponse struct {
 
 // HandleError maps an error to an HTTP response. If the error is an AppError, it uses its HTTP status and code;
 // otherwise, it returns a generic 500 error.
-func HandleError(w http.ResponseWriter, r *http.Request, err error) {
+func HandleError(w http.ResponseWriter, r *http.Request, err error) error {
 	log := ctxlog.From(r.Context())
 
 	var appErr apperror.AppError
 	if !errors.As(err, &appErr) {
-		// Неизвестная ошибка — не раскрываем детали клиенту.
 		log.Error("unhandled error", slog.Any("error", err))
-		WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError})
-		return
+		if writeErr := WriteJSON(w, http.StatusInternalServerError, ErrorResponse{Code: apperror.CodeInternalError}); writeErr != nil {
+			log.Error("failed to write error response",
+				slog.Int("status", http.StatusInternalServerError),
+				slog.String("code", apperror.CodeInternalError),
+				slog.Any("error", writeErr),
+			)
+			return fmt.Errorf("write internal error response: %w", writeErr)
+		}
+		return nil
 	}
 
 	status := appErr.HTTPStatus()
@@ -50,7 +57,16 @@ func HandleError(w http.ResponseWriter, r *http.Request, err error) {
 		Field:  appErr.Field(),
 		Fields: appErr.Fields(),
 	}
-	WriteJSON(w, status, resp)
+	if err = WriteJSON(w, status, resp); err != nil {
+		log.Error("failed to write error response",
+			slog.Int("status", status),
+			slog.String("code", appErr.Code()),
+			slog.Any("error", err),
+		)
+		return fmt.Errorf("write error response: %w", err)
+	}
+
+	return nil
 }
 
 func WriteJSON(w http.ResponseWriter, status int, v any) error {

@@ -128,6 +128,7 @@ func (uc *FriendshipUseCase) GetFriendshipStatus(ctx context.Context, viewerID, 
 }
 
 func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, senderID uuid.UUID) error {
+	slog.Debug("FriendshipUseCase Accept Request")
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Requests().UpdateStatus(ctx, senderID, receiverID, entity.ReqStatusAccepted); err != nil {
 
@@ -156,7 +157,7 @@ func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, send
 	})
 
 	if err != nil {
-
+		slog.Debug(err.Error())
 		return err
 	}
 
@@ -285,9 +286,13 @@ func marshalPayload(v any) ([]byte, error) {
 
 func insertOutboxEvent(ctx context.Context, tx domain.Tx, aggregateID, aggregateType, eventType string, payload any) error {
 	b, err := marshalPayload(payload)
+	slog.Debug("insertOutboxEvent")
+
 	if err != nil {
+
 		return err
 	}
+
 	return tx.Outbox().Insert(ctx, &outbox.OutboxEvent{
 		ID:            uuid.New(),
 		AggregateID:   aggregateID,

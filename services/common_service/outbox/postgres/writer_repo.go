@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"log/slog"
 
 	"github.com/google/uuid"
 
@@ -19,6 +20,7 @@ func NewWriterRepository(exec database.Executor) *WriterRepository {
 }
 
 func (r *WriterRepository) Insert(ctx context.Context, event *outbox.OutboxEvent) error {
+	slog.Debug("WriterRepository Insert")
 	id := event.ID
 	if id == uuid.Nil {
 		id = uuid.New()
@@ -37,8 +39,11 @@ func (r *WriterRepository) Insert(ctx context.Context, event *outbox.OutboxEvent
 		event.Payload,
 		outbox.StatusPending,
 	)
+
 	if err != nil {
+
 		return fmt.Errorf("outbox insert: %w", err)
 	}
+
 	return nil
 }

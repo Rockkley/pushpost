@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	"github.com/rockkley/pushpost/services/common_service/jwt"
 	"log/slog"
@@ -85,7 +86,7 @@ func (m *AuthMiddleware) OptionalAuth(next http.Handler) http.Handler {
 
 		claims, err := m.jwtManager.Parse(tokenStr)
 		if err != nil {
-			slog.Debug("optional auth: invalid token", slog.Any("error", err))
+			ctxlog.From(r.Context()).Debug("optional auth: invalid token", slog.Any("error", err))
 			next.ServeHTTP(w, r)
 			return
 		}

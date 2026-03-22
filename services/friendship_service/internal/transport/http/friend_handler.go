@@ -3,6 +3,7 @@ package http
 import (
 	"encoding/json"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -24,53 +25,75 @@ func NewFriendshipHandler(uc domain.FriendshipUseCase) *FriendshipHandler {
 
 func (h *FriendshipHandler) SendRequest(w http.ResponseWriter, r *http.Request) error {
 	senderID, err := requireUserID(r)
+
 	if err != nil {
+
 		return err
 	}
 
 	var body struct {
 		ReceiverID uuid.UUID `json:"receiver_id"`
 	}
+
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
+
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
+
 	if body.ReceiverID == uuid.Nil {
+
 		return commonapperr.Validation(commonapperr.CodeFieldRequired, "receiver_id", "receiver_id is required")
 	}
 
 	if err = h.uc.SendRequest(r.Context(), senderID, body.ReceiverID); err != nil {
+
 		return err
 	}
+
 	return httperror.WriteJSON(w, http.StatusCreated, map[string]string{"message": "friend request sent"})
 }
 
 func (h *FriendshipHandler) AcceptRequest(w http.ResponseWriter, r *http.Request) error {
+	slog.Debug("FriendshipHandler Accept Request")
 	receiverID, err := requireUserID(r)
+
 	if err != nil {
+
 		return err
 	}
+
 	senderID, err := parsePathUUID(r, "senderID")
+
 	if err != nil {
+
 		return err
 	}
 
 	if err = h.uc.AcceptRequest(r.Context(), receiverID, senderID); err != nil {
+
 		return err
 	}
+
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "friend request accepted"})
 }
 
 func (h *FriendshipHandler) RejectRequest(w http.ResponseWriter, r *http.Request) error {
 	receiverID, err := requireUserID(r)
+
 	if err != nil {
+
 		return err
 	}
+
 	senderID, err := parsePathUUID(r, "senderID")
+
 	if err != nil {
+
 		return err
 	}
 
 	if err = h.uc.RejectRequest(r.Context(), receiverID, senderID); err != nil {
+
 		return err
 	}
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "friend request rejected"})
@@ -79,14 +102,18 @@ func (h *FriendshipHandler) RejectRequest(w http.ResponseWriter, r *http.Request
 func (h *FriendshipHandler) CancelRequest(w http.ResponseWriter, r *http.Request) error {
 	senderID, err := requireUserID(r)
 	if err != nil {
+
 		return err
 	}
 	receiverID, err := parsePathUUID(r, "receiverID")
+
 	if err != nil {
+
 		return err
 	}
 
 	if err = h.uc.CancelRequest(r.Context(), senderID, receiverID); err != nil {
+
 		return err
 	}
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "friend request cancelled"})
@@ -95,16 +122,20 @@ func (h *FriendshipHandler) CancelRequest(w http.ResponseWriter, r *http.Request
 func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Request) error {
 	userID, err := requireUserID(r)
 	if err != nil {
+
 		return err
 	}
 	friendID, err := parsePathUUID(r, "userID")
 	if err != nil {
+
 		return err
 	}
 
 	if err = h.uc.DeleteFriendship(r.Context(), userID, friendID); err != nil {
+
 		return err
 	}
+
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "friendship deleted"})
 }
 
@@ -210,6 +241,7 @@ func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.R
 	}
 
 	items := make([]item, 0, len(reqs))
+
 	for _, req := range reqs {
 		items = append(items, item{
 			RequestID: req.ID.String(),

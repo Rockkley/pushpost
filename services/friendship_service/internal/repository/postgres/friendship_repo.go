@@ -11,6 +11,7 @@ import (
 	apperr "github.com/rockkley/pushpost/services/friendship_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
+	"log/slog"
 )
 
 type friendshipRepo struct {
@@ -22,6 +23,7 @@ func NewFriendshipRepository(exec database.Executor) repository.FriendshipReposi
 }
 
 func (r *friendshipRepo) Create(ctx context.Context, friendship *entity.Friendship) error {
+	slog.Debug("friendshipRepo Create")
 	u1, u2 := orderUUIDs(friendship.User1ID, friendship.User2ID)
 
 	query := `INSERT INTO friendships (id, user1_id, user2_id) VALUES ($1,$2,$3) RETURNING created_at`

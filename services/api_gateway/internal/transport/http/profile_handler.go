@@ -2,6 +2,7 @@ package http
 
 import (
 	"errors"
+	"github.com/rockkley/pushpost/services/common_service/ctxlog"
 	"log/slog"
 	"net/http"
 	"regexp"
@@ -44,6 +45,7 @@ func NewProfileHandler(deps ProfileHandlerDeps) *ProfileHandler {
 }
 
 func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Request) error {
+	log := ctxlog.From(r.Context()).With(slog.String("op", "ProfileHandler.GetProfileByUsername"))
 	username := strings.TrimSpace(chi.URLParam(r, "username"))
 	if !usernamePathRegex.MatchString(username) {
 		return commonapperr.NotFound("user_not_found", "user not found")
@@ -69,7 +71,7 @@ func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Req
 		if relErr == nil {
 			resp.FriendshipStatus = friendship_api.ResolveStatus(rel)
 		} else {
-			slog.Warn("failed to fetch friendship status",
+			log.Warn("failed to fetch friendship status",
 				slog.String("viewer_id", viewerID.String()),
 				slog.String("target_id", profile.UserID.String()),
 				slog.Any("error", relErr),
