@@ -28,19 +28,25 @@ func (u *ProfileUseCase) GetByUsername(ctx context.Context, username string) (*e
 			normalized := strings.ToLower(strings.TrimSpace(username))
 			if normalized != "" && normalized != username {
 				user, retryErr := u.userClient.GetUserByUsername(ctx, normalized)
+
 				if retryErr == nil {
+
 					return &entity.Profile{
 						UserID:    user.ID,
 						Username:  user.Username,
 						CreatedAt: user.CreatedAt,
 					}, nil
 				}
+
 				if !errors.Is(retryErr, user_api.ErrNotFound) {
+
 					return nil, retryErr
 				}
 			}
+
 			return nil, domain.ErrProfileNotFound
 		}
+
 		return nil, err
 	}
 

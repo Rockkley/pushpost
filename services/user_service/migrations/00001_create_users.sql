@@ -6,20 +6,23 @@ CREATE TABLE users
     username      VARCHAR(30)  NOT NULL,
     email         VARCHAR(255) NOT NULL,
     password_hash CHAR(60)     NOT NULL,
+    status        VARCHAR(20)  NOT NULL DEFAULT 'inactive',
     created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
     deleted_at    TIMESTAMP,
 
-    CONSTRAINT username_length CHECK (char_length(username) >= 3),
-    CONSTRAINT email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$')
+    CONSTRAINT users_username_length CHECK (char_length(username) BETWEEN 3 AND 30),
+    CONSTRAINT users_email_format CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
+    CONSTRAINT users_status_valid CHECK (status IN ('inactive','active', 'blocked', 'deleted'))
 );
 
 CREATE UNIQUE INDEX idx_users_username_unique ON users (LOWER(username)) WHERE deleted_at IS NULL;
 CREATE UNIQUE INDEX idx_users_email_unique ON users (LOWER(email)) WHERE deleted_at IS NULL;
 CREATE INDEX idx_users_created_at ON users (created_at DESC);
 CREATE INDEX idx_users_active ON users (id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_users_status ON users (status) WHERE deleted_at IS NULL;
 
-CREATE OR REPLACE FUNCTION update_updated_at_column()
+CREATE OR REPLACE FUNCTION update_users_updated_at_column()
     RETURNS TRIGGER AS $$
 BEGIN
     NEW.updated_at = NOW();
@@ -30,7 +33,7 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER update_users_updated_at
     BEFORE UPDATE ON users
     FOR EACH ROW
-EXECUTE FUNCTION update_updated_at_column();;
+EXECUTE FUNCTION update_users_updated_at_column();;
 
 COMMENT ON COLUMN users.username IS 'display name, case-insensitive unique';
 COMMENT ON COLUMN users.email IS 'case-insensitive unique';
@@ -40,6 +43,6 @@ COMMENT ON COLUMN users.password_hash IS '60 chars';
 -- +goose Down
 -- +goose StatementBegin
 DROP TRIGGER IF EXISTS update_users_updated_at ON users;
-DROP FUNCTION IF EXISTS update_updated_at_column();
+DROP FUNCTION IF EXISTS update_users_updated_at_column();
 DROP TABLE IF EXISTS users CASCADE;
 -- +goose StatementEnd

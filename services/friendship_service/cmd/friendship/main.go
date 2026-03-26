@@ -20,12 +20,10 @@ import (
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
-	//friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendship/v1"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/config"
-	usecase "github.com/rockkley/pushpost/services/friendship_service/internal/domain/usecase"
+	"github.com/rockkley/pushpost/services/friendship_service/internal/domain/usecase"
 	repopg "github.com/rockkley/pushpost/services/friendship_service/internal/repository/postgres"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport"
-	//friendgrpc "github.com/rockkley/pushpost/services/friendship_service/internal/transport/grpc"
 	friendhttp "github.com/rockkley/pushpost/services/friendship_service/internal/transport/http"
 )
 
@@ -94,10 +92,6 @@ func main() {
 
 	// gRPC server
 	grpcSrv := grpc.NewServer()
-	//friendshipv1.RegisterFriendshipServiceServer(
-	//	grpcSrv,
-	//	friendgrpc.NewFriendshipServer(friendUseCase, appLog),
-	//)
 
 	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPC.Port))
 	if err != nil {

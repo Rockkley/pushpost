@@ -100,7 +100,7 @@ func (u *UserUseCase) GetUserByID(ctx context.Context, id uuid.UUID) (*entity.Us
 	)
 
 	// FindByID not filtering deleted_at in SQL
-	// we check it explicitly in the use case to distinguish "not found" and "deleted" at the business logic level.
+	// we check it explicitly in the use case to distinguish "not found" and "deleted" at the business logic level
 	user, err := u.uow.Reader().FindByID(ctx, id)
 	if err != nil {
 		log.Debug("user not found", slog.Any("error", err))
