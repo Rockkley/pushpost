@@ -40,30 +40,6 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	return httperror.WriteJSON(w, http.StatusCreated, user)
 }
 
-//func (h *UserHandler) AuthenticateUser(w http.ResponseWriter, r *http.Request) error {
-//	var req dto.AuthenticateUserRequestDTO
-//
-//	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-//
-//		return apperror.Internal(apperror.CodeInternalError, err) //fixme
-//	}
-//
-//	if err := req.Validate(); err != nil {
-//		return apperror.InvalidCredentials() // fixme
-//	}
-//
-//	mappedDTO := mapper.AuthUserFromRequestToUseCase(req)
-//
-//	user, err := h.userUseCase.AuthenticateUser(r.Context(), *mappedDTO)
-//
-//	if err != nil {
-//		return err
-//	}
-//
-//	return httperror.WriteJSON(w, http.StatusOK, user)
-//
-//}
-
 func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) error {
 	email := r.URL.Query().Get("email")
 	if email == "" {

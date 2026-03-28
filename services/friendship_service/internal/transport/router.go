@@ -1,4 +1,4 @@
-package router
+package transport
 
 import (
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/middleware"

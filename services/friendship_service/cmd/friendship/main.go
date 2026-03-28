@@ -81,7 +81,7 @@ func main() {
 
 	// HTTP server
 	httpHandler := friendhttp.NewFriendshipHandler(friendUseCase)
-	mux := router.NewRouter(appLog, httpHandler)
+	mux := transport.NewRouter(appLog, httpHandler)
 
 	httpSrv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),

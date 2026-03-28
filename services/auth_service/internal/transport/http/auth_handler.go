@@ -59,7 +59,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	err := req.Validate()
 
 	if err != nil {
-		return err
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, err.Error())
 	}
 
 	token, err := h.authUseCase.Login(r.Context(), req)
