@@ -73,7 +73,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 			ID:            uuid.New(),
 			AggregateID:   user.ID.String(),
 			AggregateType: "user",
-			EventType:     "user",
+			EventType:     "user.created",
 			Payload:       payload,
 		})
 	})

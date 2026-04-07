@@ -54,6 +54,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 
 		if err = json.Unmarshal(msg.Value, &envelope); err != nil {
 			c.log.Error("invalid envelope",
+				slog.Any("message_value", string(msg.Value)),
 				slog.Int64("offset", msg.Offset),
 				slog.Any("error", err),
 			)
@@ -68,8 +69,9 @@ func (c *Consumer) Run(ctx context.Context) error {
 			)
 			continue
 		}
-		fmt.Println("after routing")
+
 		if err = c.reader.CommitMessages(ctx, msg); err != nil {
+
 			return fmt.Errorf("commit kafka message: %w", err)
 		}
 
@@ -81,5 +83,6 @@ func (c *Consumer) Run(ctx context.Context) error {
 }
 
 func (c *Consumer) Close() error {
+
 	return c.reader.Close()
 }
