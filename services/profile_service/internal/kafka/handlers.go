@@ -2,6 +2,7 @@ package kafka
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 
 	"github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
@@ -25,7 +26,7 @@ func (h *UserCreatedProcessor) Handle(ctx context.Context, evt domain.UserCreate
 	h.log.Info("handling user.created",
 		slog.String("user_id", evt.UserID),
 	)
-
+	fmt.Println("HANDLEING WORKS")
 	h.log.Info("HANDLEING WORKS")
 	//
 	// profileRepo.CreateProfile(ctx, evt.UserID)

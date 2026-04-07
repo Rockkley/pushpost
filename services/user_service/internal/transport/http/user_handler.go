@@ -17,6 +17,7 @@ type UserHandler struct {
 }
 
 func NewUserHandler(userUseCase domain.UserUseCaseInterface) *UserHandler {
+
 	return &UserHandler{userUseCase: userUseCase}
 }
 
@@ -29,11 +30,14 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	if err := req.Validate(); err != nil {
+
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, err.Error())
 	}
 
 	user, err := h.userUseCase.CreateUser(r.Context(), *mapper.CreateUserFromRequestToUseCase(req))
+
 	if err != nil {
+
 		return err
 	}
 
@@ -42,6 +46,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 
 func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) error {
 	email := r.URL.Query().Get("email")
+
 	if email == "" {
 
 		return commonapperr.Validation(

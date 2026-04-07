@@ -1,14 +1,12 @@
 package domain
 
-import "encoding/json"
-
 const (
 	EventUserCreated = "user.created"
 )
 
 type Envelope struct {
-	EventType string          `json:"event_type"`
-	Payload   json.RawMessage `json:"payload"`
+	EventType string `json:"event_type"`
+	Payload   []byte `json:"payload"`
 }
 
 type UserCreatedEvent struct {

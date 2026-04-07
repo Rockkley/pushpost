@@ -68,7 +68,7 @@ func (c *Consumer) Run(ctx context.Context) error {
 			)
 			continue
 		}
-
+		fmt.Println("after routing")
 		if err = c.reader.CommitMessages(ctx, msg); err != nil {
 			return fmt.Errorf("commit kafka message: %w", err)
 		}
