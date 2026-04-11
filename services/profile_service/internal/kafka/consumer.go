@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	domain "github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
-	"github.com/segmentio/kafka-go"
 	"log/slog"
 	"time"
+
+	domain "github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
+	"github.com/segmentio/kafka-go"
 )
 
 type EventRouter interface {
@@ -43,18 +44,15 @@ func (c *Consumer) Run(ctx context.Context) error {
 		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
-
 				return nil
 			}
-
 			return fmt.Errorf("fetch kafka message: %w", err)
 		}
 
 		var envelope domain.Envelope
-
 		if err = json.Unmarshal(msg.Value, &envelope); err != nil {
 			c.log.Error("invalid envelope",
-				slog.Any("message_value", string(msg.Value)),
+				slog.String("message_value", string(msg.Value)),
 				slog.Int64("offset", msg.Offset),
 				slog.Any("error", err),
 			)
@@ -71,7 +69,6 @@ func (c *Consumer) Run(ctx context.Context) error {
 		}
 
 		if err = c.reader.CommitMessages(ctx, msg); err != nil {
-
 			return fmt.Errorf("commit kafka message: %w", err)
 		}
 
@@ -83,6 +80,5 @@ func (c *Consumer) Run(ctx context.Context) error {
 }
 
 func (c *Consumer) Close() error {
-
 	return c.reader.Close()
 }

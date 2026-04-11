@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
+	domain "github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
 )
 
 type Router struct {
@@ -22,10 +22,8 @@ func NewRouter(userCreatedHandler UserCreatedHandler, log *slog.Logger) *Router 
 }
 
 func (r *Router) Route(ctx context.Context, env domain.Envelope) error {
-	fmt.Println(env)
 	switch env.EventType {
 	case domain.EventUserCreated:
-		fmt.Println("ROUTED")
 		var evt domain.UserCreatedEvent
 		if err := json.Unmarshal(env.Payload, &evt); err != nil {
 			return fmt.Errorf("decode user.created: %w", err)

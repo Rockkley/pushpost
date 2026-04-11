@@ -1,0 +1,76 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"strings"
+
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/database"
+	"github.com/rockkley/pushpost/services/profile_service/internal/domain"
+	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
+)
+
+type ProfileRepository struct {
+	exec database.Executor
+}
+
+func NewProfileRepository(exec database.Executor) *ProfileRepository {
+	return &ProfileRepository{exec: exec}
+}
+
+func (r *ProfileRepository) Create(ctx context.Context, profile *entity.Profile) error {
+	query := `
+		INSERT INTO profiles (user_id, username, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
+		ON CONFLICT (user_id) DO NOTHING`
+
+	_, err := r.exec.ExecContext(ctx, query, profile.UserID, profile.Username)
+	if err != nil {
+		return fmt.Errorf("profile create: %w", err)
+	}
+	return nil
+}
+
+func (r *ProfileRepository) FindByUsername(ctx context.Context, username string) (*entity.Profile, error) {
+	username = strings.ToLower(strings.TrimSpace(username))
+
+	query := `
+		SELECT user_id, username, display_name, first_name, last_name, birth_date, avatar_url, bio, telegram_link, 
+		       is_private, created_at, updated_at, deleted_at
+		FROM   profiles
+		WHERE  LOWER(username) = $1
+		  AND  deleted_at IS NULL`
+
+	var p entity.Profile
+
+	err := r.exec.QueryRowContext(ctx, query, username).Scan(
+		&p.UserID,
+		&p.Username,
+		&p.DisplayName,
+		&p.FirstName,
+		&p.LastName,
+		&p.BirthDate,
+		&p.AvatarURL,
+		&p.Bio,
+		&p.TelegramLink,
+		&p.IsPrivate,
+		&p.CreatedAt,
+		&p.UpdatedAt,
+		&p.DeletedAt,
+	)
+
+	if err != nil {
+
+		if errors.Is(err, sql.ErrNoRows) {
+
+			return nil, domain.ErrProfileNotFound
+		}
+
+		return nil, commonapperr.MapPostgresError(err, "find profile by username")
+	}
+
+	return &p, nil
+}

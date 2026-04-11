@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package profile.v1;
+
+option go_package = "github.com/rockkley/pushpost/services/profile_service/gen/profile/v1;profilev1";
+
+service ProfileService {
+  rpc GetProfileByUsername(GetProfileByUsernameRequest) returns (GetProfileByUsernameResponse);
+}
+
+message GetProfileByUsernameRequest {
+  string username = 1;
+}
+
+message GetProfileByUsernameResponse {
+  string user_id       = 1;
+  string username      = 2;
+  string created_at    = 3;
+  string display_name  = 4;
+  string first_name    = 5;
+  string last_name     = 6;
+  string birth_date    = 7;
+  string avatar_url    = 8;
+  string bio           = 9;
+  string telegram_link = 10;
+  bool   is_private    = 11;
+}

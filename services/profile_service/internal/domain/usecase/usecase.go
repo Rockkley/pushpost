@@ -2,57 +2,23 @@ package usecase
 
 import (
 	"context"
-	"errors"
-	"github.com/rockkley/pushpost/clients/user_api"
-	"github.com/rockkley/pushpost/services/profile_service/internal/domain"
+	"github.com/rockkley/pushpost/services/profile_service/internal/repository"
+
 	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
-	"strings"
 )
 
-type userReader interface {
-	GetUserByUsername(ctx context.Context, username string) (*user_api.UserResponse, error)
-}
-
 type ProfileUseCase struct {
-	userClient userReader
+	profileRepo repository.ProfileRepositoryInterface
 }
 
-func NewProfileUseCase(userClient userReader) *ProfileUseCase {
-	return &ProfileUseCase{userClient: userClient}
+func NewProfileUseCase(profileRepo repository.ProfileRepositoryInterface) *ProfileUseCase {
+	return &ProfileUseCase{profileRepo: profileRepo}
 }
 
 func (u *ProfileUseCase) GetByUsername(ctx context.Context, username string) (*entity.Profile, error) {
-	user, err := u.userClient.GetUserByUsername(ctx, username)
-	if err != nil {
-		if errors.Is(err, user_api.ErrNotFound) {
-			normalized := strings.ToLower(strings.TrimSpace(username))
-			if normalized != "" && normalized != username {
-				user, retryErr := u.userClient.GetUserByUsername(ctx, normalized)
+	return u.profileRepo.FindByUsername(ctx, username)
+}
 
-				if retryErr == nil {
-
-					return &entity.Profile{
-						UserID:    user.ID,
-						Username:  user.Username,
-						CreatedAt: user.CreatedAt,
-					}, nil
-				}
-
-				if !errors.Is(retryErr, user_api.ErrNotFound) {
-
-					return nil, retryErr
-				}
-			}
-
-			return nil, domain.ErrProfileNotFound
-		}
-
-		return nil, err
-	}
-
-	return &entity.Profile{
-		UserID:    user.ID,
-		Username:  user.Username,
-		CreatedAt: user.CreatedAt,
-	}, nil
+func (u *ProfileUseCase) CreateProfile(ctx context.Context, profile *entity.Profile) error {
+	return u.profileRepo.Create(ctx, profile)
 }

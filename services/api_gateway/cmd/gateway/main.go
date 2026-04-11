@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/rockkley/pushpost/clients/friendship_api"
-	"github.com/rockkley/pushpost/clients/profile_api"
-	"github.com/rockkley/pushpost/services/api_gateway/internal/transport"
-	myHTTP "github.com/rockkley/pushpost/services/api_gateway/internal/transport/http"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -16,10 +12,13 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-
+	"github.com/rockkley/pushpost/clients/friendship_api"
+	profile_grpc "github.com/rockkley/pushpost/clients/profile_grpc"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/config"
 	gwmiddleware "github.com/rockkley/pushpost/services/api_gateway/internal/middleware"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/proxy"
+	"github.com/rockkley/pushpost/services/api_gateway/internal/transport"
+	myHTTP "github.com/rockkley/pushpost/services/api_gateway/internal/transport/http"
 	"github.com/rockkley/pushpost/services/common_service/jwt"
 	"github.com/rockkley/pushpost/services/common_service/logger"
 )
@@ -34,7 +33,6 @@ func main() {
 	}
 
 	cfg, err := config.Load()
-
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -62,10 +60,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	profileClient, err := profile_api.NewProfileClient(cfg.Services.ProfileService, &http.Client{Timeout: timeout})
-
+	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
 	if err != nil {
-		appLog.Error("failed to create profile client", slog.Any("error", err))
+		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
 
@@ -73,7 +70,6 @@ func main() {
 		cfg.Services.FriendshipService,
 		&http.Client{Timeout: timeout},
 	)
-
 	if err != nil {
 		appLog.Error("failed to create friendship client", slog.Any("error", err))
 		os.Exit(1)
@@ -81,10 +77,7 @@ func main() {
 
 	jwtManager := jwt.NewManager(cfg.JWT.Secret, nil)
 	authMW := gwmiddleware.NewAuthMiddleware(jwtManager)
-	profileHandler := myHTTP.NewProfileHandler(myHTTP.ProfileHandlerDeps{
-		ProfileClient:    profileClient,
-		FriendshipClient: friendshipClient,
-	})
+	profileHandler := myHTTP.NewProfileHandler(profileClient, friendshipClient)
 
 	mux := transport.NewRouter(appLog, authMW, transport.Proxies{
 		Auth:       authProxy,
@@ -100,7 +93,6 @@ func main() {
 	}
 
 	serverErr := make(chan error, 1)
-
 	go func() {
 		appLog.Info("api gateway started", slog.String("port", cfg.HTTP.Port))
 		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {

@@ -8,6 +8,7 @@ import (
 
 var ErrProfileNotFound = errors.New("profile not found")
 
-type ProfileUseCase interface {
+type ProfileUseCaseInterface interface {
 	GetByUsername(ctx context.Context, username string) (*entity.Profile, error)
+	CreateProfile(ctx context.Context, profile *entity.Profile) error
 }
