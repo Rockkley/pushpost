@@ -37,7 +37,9 @@ func (u *UnitOfWork) Reader() repository.MessageRepository {
 
 func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	sqlTx, err := u.db.BeginTx(ctx, nil)
+
 	if err != nil {
+
 		return fmt.Errorf("begin tx: %w", err)
 	}
 	defer sqlTx.Rollback()
@@ -48,11 +50,14 @@ func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	}
 
 	if err = fn(t); err != nil {
+
 		return err
 	}
 
 	if err = sqlTx.Commit(); err != nil {
+
 		return fmt.Errorf("commit tx: %w", err)
 	}
+
 	return nil
 }
