@@ -13,7 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/rockkley/pushpost/clients/friendship_api"
-	profile_grpc "github.com/rockkley/pushpost/clients/profile_grpc"
+	"github.com/rockkley/pushpost/clients/profile_grpc"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/config"
 	gwmiddleware "github.com/rockkley/pushpost/services/api_gateway/internal/middleware"
 	"github.com/rockkley/pushpost/services/api_gateway/internal/proxy"
@@ -60,6 +60,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	messageProxy, err := proxy.NewStrippingAuth(cfg.Services.MessageService, timeout)
+	if err != nil {
+		appLog.Error("failed to create message proxy", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
@@ -83,6 +89,7 @@ func main() {
 		Auth:       authProxy,
 		User:       userProxy,
 		Friendship: friendshipProxy,
+		Message:    messageProxy,
 	}, *profileHandler)
 
 	srv := &http.Server{

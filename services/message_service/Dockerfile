@@ -14,5 +14,5 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /service
 
 COPY --from=builder /out/message-service /usr/local/bin/message-service
-EXPOSE 8080
+EXPOSE 8084
 ENTRYPOINT ["/usr/local/bin/message-service"]

@@ -40,7 +40,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 	user := &entity.User{
 		ID:           uuid.New(),
 		Username:     strings.ToLower(strings.TrimSpace(req.Username)),
-		Email:        req.Email,
+		Email:        strings.ToLower(strings.TrimSpace(req.Email)),
 		PasswordHash: req.PasswordHash,
 	}
 

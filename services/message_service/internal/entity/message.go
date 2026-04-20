@@ -2,28 +2,27 @@ package entity
 
 import (
 	"errors"
-	"github.com/google/uuid"
 	"time"
 	"unicode/utf8"
+
+	"github.com/google/uuid"
 )
 
 const (
-	MinMessageLength = 1 //fixme parse from config
+	MinMessageLength = 1
 	MaxMessageLength = 10000
 )
 
 type Message struct {
-	Id         uuid.UUID
-	SenderID   uuid.UUID
-	ReceiverID uuid.UUID
-	Content    string
-	CreatedAt  time.Time
-	ReadAt     *time.Time
+	ID         uuid.UUID  `json:"id"`
+	SenderID   uuid.UUID  `json:"sender_id"`
+	ReceiverID uuid.UUID  `json:"receiver_id"`
+	Content    string     `json:"content"`
+	CreatedAt  time.Time  `json:"created_at"`
+	ReadAt     *time.Time `json:"read_at,omitempty"`
 }
 
-func (m *Message) IsRead() bool {
-	return m.ReadAt != nil
-}
+func (m *Message) IsRead() bool { return m.ReadAt != nil }
 
 var (
 	ErrMessageNotFound    = errors.New("message_service not found")
@@ -38,14 +37,16 @@ var (
 )
 
 func ValidateContent(content string) error {
-
 	length := utf8.RuneCountInString(content)
-	if length > MaxMessageLength {
-		return ErrMessageTooLong
-	}
 
 	if length < MinMessageLength {
+
 		return ErrMessageEmpty
+	}
+
+	if length > MaxMessageLength {
+
+		return ErrMessageTooLong
 	}
 
 	return nil

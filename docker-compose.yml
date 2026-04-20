@@ -100,6 +100,17 @@ services:
     depends_on:
       - user-service
 
+  message-service:
+    build:
+      context: .
+      dockerfile: services/message_service/Dockerfile
+    env_file: services/message_service/.env
+    expose:
+      - "8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api-gateway:
     build:
       context: .
@@ -112,6 +123,7 @@ services:
       - user-service
       - friendship-service
       - profile-service
+      - message-service
 
 volumes:
   postgres_data:
