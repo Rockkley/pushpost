@@ -44,6 +44,7 @@ func (uc *MessageUseCase) SendMessage(ctx context.Context, req dto.SendMessageDT
 		case entity.ErrMessageTooLong:
 			return nil, apperr.MessageTooLong()
 		default:
+
 			return nil, apperr.MessageEmpty()
 		}
 	}
@@ -109,6 +110,7 @@ func (uc *MessageUseCase) MarkAsRead(ctx context.Context, messageID, userID uuid
 	log := ctxlog.From(ctx).With(slog.String("op", "MessageUseCase.MarkAsRead"))
 
 	msg, err := uc.uow.Reader().FindByID(ctx, messageID)
+
 	if err != nil {
 
 		return err

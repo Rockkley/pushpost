@@ -11,8 +11,8 @@ import (
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
+	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain"
-	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/middleware"
 )
 
 type FriendshipHandler struct {
@@ -257,7 +257,7 @@ func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.R
 }
 
 func requireUserID(r *http.Request) (uuid.UUID, error) {
-	userID, ok := r.Context().Value(middleware.CtxUserIDKey).(uuid.UUID)
+	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
 
 	if !ok || userID == uuid.Nil {
 

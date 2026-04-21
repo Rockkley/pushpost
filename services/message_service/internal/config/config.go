@@ -34,34 +34,45 @@ type KafkaConfig struct {
 func (k KafkaConfig) Brokers() []string {
 	brokers := strings.Split(k.BrokersRaw, ",")
 	result := make([]string, 0, len(brokers))
+
 	for _, b := range brokers {
 		if b = strings.TrimSpace(b); b != "" {
 			result = append(result, b)
 		}
 	}
+
 	return result
 }
 
 func Load() (*Config, error) {
 	var cfg Config
+
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
+
 		return nil, fmt.Errorf("config: %w", err)
 	}
+
 	if err := cfg.validate(); err != nil {
+
 		return nil, fmt.Errorf("config: validation: %w", err)
 	}
+
 	return &cfg, nil
 }
 
 func (c *Config) validate() error {
 	if c.Database.MaxIdleConns > c.Database.MaxOpenConns {
+
 		return fmt.Errorf(
 			"max_idle_conns (%d) cannot exceed max_open_conns (%d)",
 			c.Database.MaxIdleConns, c.Database.MaxOpenConns,
 		)
 	}
+
 	if len(c.Kafka.Brokers()) == 0 {
+
 		return fmt.Errorf("kafka brokers list is empty")
 	}
+
 	return nil
 }

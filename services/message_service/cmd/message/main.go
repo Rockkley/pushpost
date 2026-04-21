@@ -27,6 +27,7 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
@@ -51,9 +52,11 @@ func main() {
 	})
 
 	if err != nil {
+
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer db.Close()
 
 	uow := postgres.NewUnitOfWork(db)
@@ -62,6 +65,7 @@ func main() {
 	mux := transport.NewRouter(appLog, handler)
 
 	kafkaPublisher := kafka.NewPublisher(cfg.Kafka.Brokers(), appLog)
+
 	defer func() {
 		if closeErr := kafkaPublisher.Close(); closeErr != nil {
 			appLog.Error("failed to close kafka publisher", slog.Any("error", closeErr))
@@ -88,9 +92,11 @@ func main() {
 	}
 
 	serverErr := make(chan error, 1)
+
 	go func() {
 		appLog.Info("message service started", slog.String("port", cfg.HTTP.Port))
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+
+		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()

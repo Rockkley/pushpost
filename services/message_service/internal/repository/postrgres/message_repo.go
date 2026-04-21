@@ -29,12 +29,16 @@ func (r *MessageRepository) Create(ctx context.Context, msg *entity.Message) (*e
 		RETURNING id, sender_id, receiver_id, content, created_at, read_at`
 
 	var out entity.Message
+
 	err := r.exec.QueryRowContext(ctx, query,
 		msg.ID, msg.SenderID, msg.ReceiverID, msg.Content, msg.CreatedAt,
 	).Scan(&out.ID, &out.SenderID, &out.ReceiverID, &out.Content, &out.CreatedAt, &out.ReadAt)
+
 	if err != nil {
+
 		return nil, commonapperr.MapPostgresError(err, "create message")
 	}
+
 	return &out, nil
 }
 
@@ -47,12 +51,16 @@ func (r *MessageRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity
 	err := r.exec.QueryRowContext(ctx, query, id).Scan(
 		&msg.ID, &msg.SenderID, &msg.ReceiverID, &msg.Content, &msg.CreatedAt, &msg.ReadAt,
 	)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+
 			return nil, apperr.MessageNotFound()
 		}
+
 		return nil, commonapperr.MapPostgresError(err, "find message by id")
 	}
+
 	return &msg, nil
 }
 
@@ -70,7 +78,9 @@ func (r *MessageRepository) GetConversation(
 		LIMIT $3 OFFSET $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, userID, otherUserID, limit, offset)
+
 	if err != nil {
+
 		return nil, commonapperr.MapPostgresError(err, "get conversation")
 	}
 	defer rows.Close()
@@ -85,9 +95,12 @@ func (r *MessageRepository) MarkAsRead(ctx context.Context, messageID, userID uu
 		WHERE id = $2 AND receiver_id = $3 AND read_at IS NULL`
 
 	_, err := r.exec.ExecContext(ctx, query, time.Now().UTC(), messageID, userID)
+
 	if err != nil {
+
 		return commonapperr.MapPostgresError(err, "mark message as read")
 	}
+
 	return nil
 }
 
@@ -98,9 +111,12 @@ func (r *MessageRepository) MarkAllAsRead(ctx context.Context, senderID, receive
 		WHERE sender_id = $2 AND receiver_id = $3 AND read_at IS NULL`
 
 	_, err := r.exec.ExecContext(ctx, query, time.Now().UTC(), senderID, receiverID)
+
 	if err != nil {
+
 		return commonapperr.MapPostgresError(err, "mark all as read")
 	}
+
 	return nil
 }
 
@@ -113,8 +129,10 @@ func (r *MessageRepository) GetUnreadCount(ctx context.Context, userID uuid.UUID
 	var count int
 	err := r.exec.QueryRowContext(ctx, query, userID).Scan(&count)
 	if err != nil {
+
 		return 0, commonapperr.MapPostgresError(err, "get unread count")
 	}
+
 	return count, nil
 }
 
@@ -126,7 +144,9 @@ func (r *MessageRepository) GetUnreadMessages(ctx context.Context, userID uuid.U
 		ORDER BY created_at DESC`
 
 	rows, err := r.exec.QueryContext(ctx, query, userID)
+
 	if err != nil {
+
 		return nil, commonapperr.MapPostgresError(err, "get unread messages")
 	}
 	defer rows.Close()
@@ -142,12 +162,17 @@ func scanMessages(rows *sql.Rows) ([]*entity.Message, error) {
 			&msg.ID, &msg.SenderID, &msg.ReceiverID,
 			&msg.Content, &msg.CreatedAt, &msg.ReadAt,
 		); err != nil {
+
 			return nil, fmt.Errorf("scan message: %w", err)
 		}
+
 		result = append(result, &msg)
 	}
+
 	if err := rows.Err(); err != nil {
+
 		return nil, fmt.Errorf("rows error: %w", err)
 	}
+
 	return result, nil
 }

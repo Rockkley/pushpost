@@ -21,18 +21,22 @@ type GetConversationDTO struct {
 
 func (dto *GetConversationDTO) Validate() error {
 	if dto.UserID == uuid.Nil {
+
 		return ErrInvalidUserID
 	}
 
 	if dto.OtherUserID == uuid.Nil {
+
 		return ErrInvalidOtherUserID
 	}
 
 	if dto.Limit <= 0 {
+
 		return ErrInvalidLimit
 	}
 
 	if dto.Offset < 0 {
+
 		return ErrInvalidOffset
 	}
 

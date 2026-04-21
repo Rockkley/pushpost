@@ -1,7 +1,7 @@
 package transport
 
 import (
-	"github.com/rockkley/pushpost/services/friendship_service/internal/transport/http/middleware"
+	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
@@ -17,7 +17,7 @@ func NewRouter(log *slog.Logger, h *myHTTP.FriendshipHandler) *chi.Mux {
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
 	r.Use(chimiddleware.Recoverer)
-	r.Use(middleware.RequireUserID)
+	r.Use(commonmiddleware.RequireUserID)
 
 	r.Post("/friends/requests", handlerhttp.MakeHandler(h.SendRequest))
 	r.Get("/friends/requests/incoming", handlerhttp.MakeHandler(h.GetIncomingRequests))
