@@ -65,14 +65,6 @@ func (r *PostRepository) GetByAuthors(
 		return nil, nil
 	}
 
-	// Конвертируем []uuid.UUID → []interface{} для передачи в ANY
-	ids := make([]string, len(authorIDs))
-	for i, id := range authorIDs {
-		ids[i] = id.String()
-	}
-
-	// Cursor-based: (created_at, id) < (before, beforeID)
-	// Используем composite cursor для стабильной пагинации
 	const query = `
         SELECT id, author_id, content, created_at, updated_at
         FROM posts

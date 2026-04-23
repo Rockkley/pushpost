@@ -54,6 +54,7 @@ func (k KafkaConfig) Brokers() []string {
 
 type FriendshipConfig struct {
 	GRPCAddr string `env:"FRIENDSHIP_GRPC_ADDR" env-required:"true"`
+	UseTLS   bool   `env:"FRIENDSHIP_GRPC_TLS"  env-default:"false"`
 }
 
 func Load() (*Config, error) {

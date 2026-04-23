@@ -1,9 +1,9 @@
 package cache
 
 import (
+	"context"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/post_service/internal/entity"
-	"golang.org/x/net/context"
 	"time"
 )
 

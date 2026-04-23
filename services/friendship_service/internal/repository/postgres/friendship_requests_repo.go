@@ -10,9 +10,6 @@ import (
 	apperr "github.com/rockkley/pushpost/services/friendship_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/repository"
-	"log"
-	"log/slog"
-	"reflect"
 	"time"
 )
 
@@ -90,8 +87,7 @@ func (r *friendshipRequestRepository) FindPendingBetween(
 func (r *friendshipRequestRepository) UpdateStatus(
 	ctx context.Context, senderID, receiverID uuid.UUID, status entity.FriendshipReqStatus,
 ) error {
-	slog.Debug("friendshipRequestRepository UpdateStatus")
-	log.Println(status, reflect.TypeOf(status))
+
 	query := `
 		UPDATE friendship_requests
 		SET    status = $3
@@ -100,16 +96,14 @@ func (r *friendshipRequestRepository) UpdateStatus(
 	result, err := r.exec.ExecContext(ctx, query, senderID, receiverID, status)
 
 	if err != nil {
-		slog.Debug("UPDATE REQUEST STATUS FUCKED UP", err.Error())
 		return commonapperr.MapPostgresError(err, "update request status")
 	}
 	rows, _ := result.RowsAffected()
 
 	if rows == 0 {
-		slog.Debug("ROWS 0")
 		return apperr.FriendRequestNotFound()
 	}
-	slog.Debug("friendshipRequestRepository UpdateStatus DONE")
+
 	return nil
 }
 

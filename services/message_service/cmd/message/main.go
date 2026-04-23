@@ -20,7 +20,7 @@ import (
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
 	"github.com/rockkley/pushpost/services/message_service/internal/config"
 	"github.com/rockkley/pushpost/services/message_service/internal/domain/usecase"
-	"github.com/rockkley/pushpost/services/message_service/internal/repository/postrgres"
+	"github.com/rockkley/pushpost/services/message_service/internal/repository/postgres"
 	"github.com/rockkley/pushpost/services/message_service/internal/transport"
 	myHTTP "github.com/rockkley/pushpost/services/message_service/internal/transport/http"
 )

@@ -71,12 +71,18 @@ func main() {
 	}
 	defer rdb.Close()
 
-	friendshipClient, err := friendship.NewGRPCClient(cfg.Friendship.GRPCAddr)
+	friendshipClient, err := friendship.NewGRPCClient(cfg.Friendship.GRPCAddr, cfg.Friendship.UseTLS)
 
 	if err != nil {
 		appLog.Error("failed to create friendship grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
+
+	defer func() {
+		if err = friendshipClient.Close(); err != nil {
+			appLog.Error("failed to close friendship grpc client", slog.Any("error", err))
+		}
+	}()
 
 	feedCache := redis.NewFeedCache(rdb)
 	uow := repopg.NewUnitOfWork(db)

@@ -6,21 +6,45 @@ import (
 
 	"github.com/google/uuid"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
 )
 
 type GRPCClient struct {
+	conn   *grpc.ClientConn
 	client friendshipv1.FriendshipServiceClient
 }
 
-func NewGRPCClient(addr string) (*GRPCClient, error) {
-	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+func NewGRPCClient(addr string, useTLS bool) (*GRPCClient, error) {
+	if addr == "" {
+		return nil, fmt.Errorf("friendship grpc addr cannot be empty")
+	}
+
+	var creds credentials.TransportCredentials
+	if useTLS {
+		// В проде здесь будет tls.NewClientTLSFromCert или mTLS
+		// Пока — системный TLS без проверки кастомного CA
+		creds = credentials.NewClientTLSFromCert(nil, "")
+	} else {
+		creds = insecure.NewCredentials()
+	}
+
+	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(creds))
 	if err != nil {
 		return nil, fmt.Errorf("dial friendship service: %w", err)
 	}
-	return &GRPCClient{client: friendshipv1.NewFriendshipServiceClient(conn)}, nil
+
+	return &GRPCClient{
+		conn:   conn,
+		client: friendshipv1.NewFriendshipServiceClient(conn),
+	}, nil
+}
+
+// Close явно закрывает gRPC соединение — вызвать в main через defer
+func (c *GRPCClient) Close() error {
+	return c.conn.Close()
 }
 
 func (c *GRPCClient) GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
@@ -35,7 +59,7 @@ func (c *GRPCClient) GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid
 	for _, s := range resp.FriendIds {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			continue // не ломаем ленту из-за одного битого UUID
+			continue
 		}
 		ids = append(ids, id)
 	}
