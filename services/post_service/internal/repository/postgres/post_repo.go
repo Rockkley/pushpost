@@ -1,0 +1,148 @@
+package postgres
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
+	"github.com/rockkley/pushpost/services/common_service/database"
+	"github.com/rockkley/pushpost/services/post_service/internal/apperror"
+	"github.com/rockkley/pushpost/services/post_service/internal/entity"
+	"github.com/rockkley/pushpost/services/post_service/internal/repository"
+)
+
+type PostRepository struct {
+	exec database.Executor
+}
+
+func NewPostRepository(exec database.Executor) repository.PostRepositoryInterface {
+	return &PostRepository{exec: exec}
+}
+
+func (r *PostRepository) Create(ctx context.Context, post *entity.Post) error {
+	const query = `
+        INSERT INTO posts (id, author_id, content)
+        VALUES ($1, $2, $3)
+        RETURNING created_at, updated_at`
+
+	err := r.exec.QueryRowContext(ctx, query, post.ID, post.AuthorID, post.Content).
+		Scan(&post.CreatedAt, &post.UpdatedAt)
+	if err != nil {
+		return commonapperr.MapPostgresError(err, "create post")
+	}
+	return nil
+}
+
+func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Post, error) {
+	const query = `
+        SELECT id, author_id, content, created_at, updated_at, deleted_at
+        FROM posts WHERE id = $1`
+
+	var p entity.Post
+	err := r.exec.QueryRowContext(ctx, query, id).Scan(
+		&p.ID, &p.AuthorID, &p.Content, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.PostNotFound()
+		}
+		return nil, commonapperr.MapPostgresError(err, "find post by id")
+	}
+	return &p, nil
+}
+
+func (r *PostRepository) GetByAuthors(
+	ctx context.Context,
+	authorIDs []uuid.UUID,
+	limit int,
+	before time.Time,
+	beforeID uuid.UUID,
+) ([]*entity.Post, error) {
+	if len(authorIDs) == 0 {
+		return nil, nil
+	}
+
+	// Конвертируем []uuid.UUID → []interface{} для передачи в ANY
+	ids := make([]string, len(authorIDs))
+	for i, id := range authorIDs {
+		ids[i] = id.String()
+	}
+
+	// Cursor-based: (created_at, id) < (before, beforeID)
+	// Используем composite cursor для стабильной пагинации
+	const query = `
+        SELECT id, author_id, content, created_at, updated_at
+        FROM posts
+        WHERE author_id = ANY($1::uuid[])
+          AND deleted_at IS NULL
+          AND (created_at, id) < ($2, $3)
+        ORDER BY created_at DESC, id DESC
+        LIMIT $4`
+
+	rows, err := r.exec.QueryContext(ctx, query, authorIDs, before, beforeID, limit)
+	if err != nil {
+		return nil, commonapperr.MapPostgresError(err, "get posts by authors")
+	}
+	defer rows.Close()
+
+	return scanPosts(rows)
+}
+
+func (r *PostRepository) GetByAuthor(
+	ctx context.Context,
+	authorID uuid.UUID,
+	limit int,
+	before time.Time,
+	beforeID uuid.UUID,
+) ([]*entity.Post, error) {
+	const query = `
+        SELECT id, author_id, content, created_at, updated_at
+        FROM posts
+        WHERE author_id = $1
+          AND deleted_at IS NULL
+          AND (created_at, id) < ($2, $3)
+        ORDER BY created_at DESC, id DESC
+        LIMIT $4`
+
+	rows, err := r.exec.QueryContext(ctx, query, authorID, before, beforeID, limit)
+	if err != nil {
+		return nil, commonapperr.MapPostgresError(err, "get posts by author")
+	}
+	defer rows.Close()
+
+	return scanPosts(rows)
+}
+
+func (r *PostRepository) SoftDelete(ctx context.Context, postID, authorID uuid.UUID) error {
+	const query = `
+        UPDATE posts SET deleted_at = NOW()
+        WHERE id = $1 AND author_id = $2 AND deleted_at IS NULL`
+
+	result, err := r.exec.ExecContext(ctx, query, postID, authorID)
+	if err != nil {
+		return commonapperr.MapPostgresError(err, "soft delete post")
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return commonapperr.Internal("rows affected", err)
+	}
+	if rows == 0 {
+		return apperror.PostNotFound()
+	}
+	return nil
+}
+
+func scanPosts(rows *sql.Rows) ([]*entity.Post, error) {
+	var result []*entity.Post
+	for rows.Next() {
+		var p entity.Post
+		if err := rows.Scan(&p.ID, &p.AuthorID, &p.Content, &p.CreatedAt, &p.UpdatedAt); err != nil {
+			return nil, err
+		}
+		result = append(result, &p)
+	}
+	return result, rows.Err()
+}

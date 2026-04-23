@@ -19,10 +19,12 @@ type Proxies struct {
 	User       *httputil.ReverseProxy
 	Friendship *httputil.ReverseProxy
 	Message    *httputil.ReverseProxy
+	Post       *httputil.ReverseProxy
 }
 
 func RewriteUsernameToPath(path string) string {
 	username := strings.TrimPrefix(path, "/")
+
 	return "/users/by-username/" + username
 }
 
@@ -37,7 +39,7 @@ func NewRouter(
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"}, // FIXME: lock down to real domains
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
 		AllowedHeaders:   []string{"Authorization", "Content-Type"},
 		AllowCredentials: false,
 		MaxAge:           300,
@@ -56,6 +58,8 @@ func NewRouter(
 		r.Handle("/friends/*", http.HandlerFunc(p.Friendship.ServeHTTP))
 		r.Handle("/messages", http.HandlerFunc(p.Message.ServeHTTP))
 		r.Handle("/messages/*", http.HandlerFunc(p.Message.ServeHTTP))
+		r.Handle("/posts", http.HandlerFunc(p.Post.ServeHTTP))
+		r.Handle("/posts/*", http.HandlerFunc(p.Post.ServeHTTP))
 	})
 
 	r.Group(func(r chi.Router) {

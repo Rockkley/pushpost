@@ -10,7 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/clients/friendship_api"
-	profile_grpc "github.com/rockkley/pushpost/clients/profile_grpc"
+	"github.com/rockkley/pushpost/clients/profile_grpc"
 	gwmiddleware "github.com/rockkley/pushpost/services/api_gateway/internal/middleware"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/ctxlog"

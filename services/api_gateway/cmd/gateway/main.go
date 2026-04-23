@@ -66,6 +66,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	postProxy, err := proxy.NewStrippingAuth(cfg.Services.PostService, timeout)
+	if err != nil {
+		appLog.Error("failed to create post proxy", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
@@ -90,6 +96,7 @@ func main() {
 		User:       userProxy,
 		Friendship: friendshipProxy,
 		Message:    messageProxy,
+		Post:       postProxy,
 	}, *profileHandler)
 
 	srv := &http.Server{
@@ -102,7 +109,7 @@ func main() {
 	serverErr := make(chan error, 1)
 	go func() {
 		appLog.Info("api gateway started", slog.String("port", cfg.HTTP.Port))
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()

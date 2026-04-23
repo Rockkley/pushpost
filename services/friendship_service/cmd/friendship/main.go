@@ -13,18 +13,19 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
-	"google.golang.org/grpc"
-
 	"github.com/rockkley/pushpost/services/common_service/database"
 	"github.com/rockkley/pushpost/services/common_service/logger"
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
+	friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/config"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain/usecase"
 	repopg "github.com/rockkley/pushpost/services/friendship_service/internal/repository/postgres"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/transport"
+	grpctransport "github.com/rockkley/pushpost/services/friendship_service/internal/transport/grpc"
 	friendhttp "github.com/rockkley/pushpost/services/friendship_service/internal/transport/http"
+	"google.golang.org/grpc"
 )
 
 func main() {
@@ -92,6 +93,10 @@ func main() {
 
 	// gRPC server
 	grpcSrv := grpc.NewServer()
+	friendshipv1.RegisterFriendshipServiceServer(
+		grpcSrv,
+		grpctransport.NewFriendshipServer(friendUseCase, appLog),
+	)
 
 	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPC.Port))
 	if err != nil {

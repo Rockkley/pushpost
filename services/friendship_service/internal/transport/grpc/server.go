@@ -8,7 +8,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendship/v1"
+	friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain"
 )
 

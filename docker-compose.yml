@@ -111,6 +111,23 @@ services:
       postgres:
         condition: service_healthy
 
+  post-service:
+    build:
+      context: .
+      dockerfile: services/post_service/Dockerfile
+    env_file: services/post_service/.env
+    expose:
+      - "8085"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      friendship-service:
+        condition: service_started
+
   api-gateway:
     build:
       context: .
