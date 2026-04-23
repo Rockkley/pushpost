@@ -90,6 +90,7 @@ func (uc *PostUseCase) CreatePost(ctx context.Context, authorID uuid.UUID, conte
 }
 
 func (uc *PostUseCase) GetFeed(ctx context.Context, userID uuid.UUID, limit int, cursorStr string) ([]*entity.Post, string, error) {
+
 	if limit <= 0 || limit > 100 {
 		limit = defaultLimit
 	}
@@ -121,7 +122,6 @@ func (uc *PostUseCase) GetFeed(ctx context.Context, userID uuid.UUID, limit int,
 		return nil, "", err
 	}
 
-	// 3. Прогреваем кеш для первой страницы
 	if cursorStr == "" && uc.cache != nil && len(posts) > 0 {
 		_ = uc.cache.SetFeed(ctx, userID, posts, 5*time.Minute)
 	}
@@ -201,15 +201,12 @@ func (uc *PostUseCase) GetPostByID(ctx context.Context, postID uuid.UUID) (*enti
 	return uc.uow.Reader().FindByID(ctx, postID)
 }
 
-// ── cursor helpers ────────────────────────────────────────────────────────────
-
 // buildCursor кодирует курсор как "timestamp|uuid"
 func buildCursor(p *entity.Post) string {
 	return fmt.Sprintf("%s|%s", p.CreatedAt.UTC().Format(time.RFC3339Nano), p.ID.String())
 }
 
 func parseCursor(cursor string) (before time.Time, beforeID uuid.UUID, err error) {
-	// Первая страница: sentinel-значения — дальнее будущее + max UUID
 	if cursor == "" {
 		return time.Now().Add(24 * time.Hour), uuid.Max, nil
 	}

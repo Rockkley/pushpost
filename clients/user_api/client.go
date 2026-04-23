@@ -48,21 +48,18 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 	endpoint, err := url.JoinPath(c.baseURL, "users")
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	body, err := json.Marshal(req)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("marshal request: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
@@ -71,7 +68,6 @@ func (c *UserClient) CreateUser(ctx context.Context, req CreateUserRequest) (*Us
 	resp, err := c.client.Do(httpReq)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 
@@ -89,21 +85,18 @@ func (c *UserClient) GetUserByID(ctx context.Context, id uuid.UUID) (*UserRespon
 	endpoint, err := url.JoinPath(c.baseURL, "users", id.String())
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	resp, err := c.client.Do(httpReq)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
 
@@ -120,14 +113,12 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserRes
 	endpoint, err := url.JoinPath(c.baseURL, "users", "by-email")
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
@@ -137,13 +128,12 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserRes
 	resp, err := c.client.Do(req)
 
 	if err != nil {
-
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-
 		return nil, decodeError(resp)
 	}
 
@@ -152,19 +142,23 @@ func (c *UserClient) GetUserByEmail(ctx context.Context, email string) (*UserRes
 
 func (c *UserClient) GetUserByUsername(ctx context.Context, username string) (*UserResponse, error) {
 	endpoint, err := url.JoinPath(c.baseURL, "users", "by-username", username)
+
 	if err != nil {
 		return nil, fmt.Errorf("build users endpoint: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+
 	if err != nil {
 		return nil, fmt.Errorf("build request: %w", err)
 	}
 
 	resp, err := c.client.Do(req)
+
 	if err != nil {
 		return nil, fmt.Errorf("execute request: %w", err)
 	}
+
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
@@ -175,13 +169,14 @@ func (c *UserClient) GetUserByUsername(ctx context.Context, username string) (*U
 }
 
 func decodeUser(resp *http.Response) (*UserResponse, error) {
-
 	var out UserResponse
 
 	dec := json.NewDecoder(io.LimitReader(resp.Body, maxBodySize))
+
 	if err := dec.Decode(&out); err != nil {
 		return nil, fmt.Errorf("decode json: %w", err)
 	}
+
 	return &out, nil
 }
 
@@ -201,6 +196,7 @@ func decodeError(resp *http.Response) error {
 		if msg == "" {
 			return fmt.Errorf("server error (%d)", resp.StatusCode)
 		}
+
 		return fmt.Errorf("server error (%d): %s", resp.StatusCode, msg)
 	}
 }
