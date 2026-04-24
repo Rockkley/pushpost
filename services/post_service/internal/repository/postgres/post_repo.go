@@ -24,12 +24,12 @@ func NewPostRepository(exec database.Executor) repository.PostRepositoryInterfac
 
 func (r *PostRepository) Create(ctx context.Context, post *entity.Post) error {
 	const query = `
-        INSERT INTO posts (id, author_id, content)
-        VALUES ($1, $2, $3)
-        RETURNING created_at, updated_at`
+		INSERT INTO posts (id, author_id, content)
+		VALUES ($1, $2, $3)
+		RETURNING version, created_at, updated_at`
 
 	err := r.exec.QueryRowContext(ctx, query, post.ID, post.AuthorID, post.Content).
-		Scan(&post.CreatedAt, &post.UpdatedAt)
+		Scan(&post.Version, &post.CreatedAt, &post.UpdatedAt)
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "create post")
 	}
@@ -38,12 +38,13 @@ func (r *PostRepository) Create(ctx context.Context, post *entity.Post) error {
 
 func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Post, error) {
 	const query = `
-        SELECT id, author_id, content, created_at, updated_at, deleted_at
-        FROM posts WHERE id = $1`
+		SELECT id, author_id, content, version, created_at, updated_at, deleted_at
+		FROM posts WHERE id = $1`
 
 	var p entity.Post
 	err := r.exec.QueryRowContext(ctx, query, id).Scan(
-		&p.ID, &p.AuthorID, &p.Content, &p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
+		&p.ID, &p.AuthorID, &p.Content, &p.Version,
+		&p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
 	)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -52,6 +53,47 @@ func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Po
 		return nil, commonapperr.MapPostgresError(err, "find post by id")
 	}
 	return &p, nil
+}
+
+func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Post, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	const query = `
+		SELECT id, author_id, content, version, created_at, updated_at
+		FROM posts
+		WHERE id = ANY($1::uuid[])
+		  AND deleted_at IS NULL`
+
+	rows, err := r.exec.QueryContext(ctx, query, ids)
+	if err != nil {
+		return nil, commonapperr.MapPostgresError(err, "get posts by ids")
+	}
+	defer rows.Close()
+
+	return scanPosts(rows)
+}
+
+func (r *PostRepository) Update(ctx context.Context, post *entity.Post) error {
+	const query = `
+		UPDATE posts
+		SET content = $1,
+		    version = version + 1
+		WHERE id = $2
+		  AND author_id = $3
+		  AND deleted_at IS NULL
+		RETURNING version, updated_at`
+
+	err := r.exec.QueryRowContext(ctx, query, post.Content, post.ID, post.AuthorID).
+		Scan(&post.Version, &post.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return apperror.PostNotFound()
+		}
+		return commonapperr.MapPostgresError(err, "update post")
+	}
+	return nil
 }
 
 func (r *PostRepository) GetByAuthors(
@@ -66,13 +108,13 @@ func (r *PostRepository) GetByAuthors(
 	}
 
 	const query = `
-        SELECT id, author_id, content, created_at, updated_at
-        FROM posts
-        WHERE author_id = ANY($1::uuid[])
-          AND deleted_at IS NULL
-          AND (created_at, id) < ($2, $3)
-        ORDER BY created_at DESC, id DESC
-        LIMIT $4`
+		SELECT id, author_id, content, version, created_at, updated_at
+		FROM posts
+		WHERE author_id = ANY($1::uuid[])
+		  AND deleted_at IS NULL
+		  AND (created_at, id) < ($2, $3)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, authorIDs, before, beforeID, limit)
 	if err != nil {
@@ -91,13 +133,13 @@ func (r *PostRepository) GetByAuthor(
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
 	const query = `
-        SELECT id, author_id, content, created_at, updated_at
-        FROM posts
-        WHERE author_id = $1
-          AND deleted_at IS NULL
-          AND (created_at, id) < ($2, $3)
-        ORDER BY created_at DESC, id DESC
-        LIMIT $4`
+		SELECT id, author_id, content, version, created_at, updated_at
+		FROM posts
+		WHERE author_id = $1
+		  AND deleted_at IS NULL
+		  AND (created_at, id) < ($2, $3)
+		ORDER BY created_at DESC, id DESC
+		LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, authorID, before, beforeID, limit)
 	if err != nil {
@@ -110,8 +152,8 @@ func (r *PostRepository) GetByAuthor(
 
 func (r *PostRepository) SoftDelete(ctx context.Context, postID, authorID uuid.UUID) error {
 	const query = `
-        UPDATE posts SET deleted_at = NOW()
-        WHERE id = $1 AND author_id = $2 AND deleted_at IS NULL`
+		UPDATE posts SET deleted_at = NOW()
+		WHERE id = $1 AND author_id = $2 AND deleted_at IS NULL`
 
 	result, err := r.exec.ExecContext(ctx, query, postID, authorID)
 	if err != nil {
@@ -131,7 +173,10 @@ func scanPosts(rows *sql.Rows) ([]*entity.Post, error) {
 	var result []*entity.Post
 	for rows.Next() {
 		var p entity.Post
-		if err := rows.Scan(&p.ID, &p.AuthorID, &p.Content, &p.CreatedAt, &p.UpdatedAt); err != nil {
+		if err := rows.Scan(
+			&p.ID, &p.AuthorID, &p.Content, &p.Version,
+			&p.CreatedAt, &p.UpdatedAt,
+		); err != nil {
 			return nil, err
 		}
 		result = append(result, &p)

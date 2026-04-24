@@ -5,3 +5,7 @@ type UserCreatedEvent struct {
 	Username string `json:"username"`
 	Email    string `json:"email"`
 }
+
+type UserDeletedEvent struct {
+	UserID string `json:"user_id"`
+}

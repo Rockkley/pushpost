@@ -4,10 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/rockkley/pushpost/services/post_service/internal/repository"
 
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
 	"github.com/rockkley/pushpost/services/post_service/internal/domain"
+	"github.com/rockkley/pushpost/services/post_service/internal/repository"
 )
 
 type uowTx struct {
@@ -28,6 +28,7 @@ func (u *UnitOfWork) Reader() repository.PostRepositoryInterface {
 
 func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	tx, err := u.db.BeginTx(ctx, nil)
+
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
@@ -43,5 +44,6 @@ func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	if err = tx.Commit(); err != nil {
 		return fmt.Errorf("commit tx: %w", err)
 	}
+
 	return nil
 }

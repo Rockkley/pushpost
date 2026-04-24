@@ -142,30 +142,48 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		slog.String("user_id", id.String()),
 	)
 
-	err := u.uow.Do(ctx, func(tx domain.Tx) error {
+	inner, err := json.Marshal(domain.UserDeletedEvent{UserID: id.String()})
+	if err != nil {
+		return commonapperr.Internal("marshal user.deleted event", err)
+	}
+
+	type envelope struct {
+		EventType string          `json:"event_type"`
+		Payload   json.RawMessage `json:"payload"`
+	}
+	payload, err := json.Marshal(envelope{
+		EventType: "user.deleted",
+		Payload:   inner,
+	})
+	if err != nil {
+		return commonapperr.Internal("marshal user.deleted envelope", err)
+	}
+
+	err = u.uow.Do(ctx, func(tx domain.Tx) error {
 		user, err := tx.Users().FindByID(ctx, id)
-
 		if err != nil {
-
 			return err
 		}
-
 		if user.IsDeleted() {
-
 			return apperr.UserNotFound()
 		}
-
-		return tx.Users().SoftDelete(ctx, id)
+		if err = tx.Users().SoftDelete(ctx, id); err != nil {
+			return err
+		}
+		return tx.Outbox().Insert(ctx, &outbox.OutboxEvent{
+			ID:            uuid.New(),
+			AggregateID:   id.String(),
+			AggregateType: "user",
+			EventType:     "user.deleted",
+			Payload:       payload,
+		})
 	})
-
 	if err != nil {
 		log.Error("failed to delete user", slog.Any("error", err))
-
 		return err
 	}
 
 	log.Info("user deleted")
-
 	return nil
 }
 

@@ -2,17 +2,26 @@ package http
 
 import (
 	"encoding/json"
-	"github.com/rockkley/pushpost/services/post_service/internal/entity"
+	"github.com/rockkley/pushpost/services/post_service/internal/domain"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
 	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
-	"github.com/rockkley/pushpost/services/post_service/internal/domain"
+	"github.com/rockkley/pushpost/services/post_service/internal/entity"
 )
+
+const maxPostBodySize = 64 * 1024 // 64KB
+
+type feedResponse struct {
+	Posts      []*entity.Post `json:"posts"`
+	NextCursor string         `json:"next_cursor"`
+	TopCursor  string         `json:"top_cursor"`
+}
 
 type PostHandler struct {
 	uc domain.PostUseCaseInterface
@@ -24,17 +33,18 @@ func NewPostHandler(uc domain.PostUseCaseInterface) *PostHandler {
 
 func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) error {
 	authorID, ok := commonmiddleware.UserIDFromContext(r.Context())
-
 	if !ok {
 		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
 	}
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
 	var body struct {
 		Content string `json:"content"`
 	}
-
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil {
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid request body")
 	}
 
 	post, err := h.uc.CreatePost(r.Context(), authorID, body.Content)
@@ -44,6 +54,34 @@ func (h *PostHandler) CreatePost(w http.ResponseWriter, r *http.Request) error {
 	return httperror.WriteJSON(w, http.StatusCreated, post)
 }
 
+func (h *PostHandler) UpdatePost(w http.ResponseWriter, r *http.Request) error {
+	authorID, ok := commonmiddleware.UserIDFromContext(r.Context())
+	if !ok {
+		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
+	}
+
+	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+	if err != nil {
+		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid post id")
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, maxPostBodySize)
+	var body struct {
+		Content string `json:"content"`
+	}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err = dec.Decode(&body); err != nil {
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid request body")
+	}
+
+	post, err := h.uc.UpdatePost(r.Context(), postID, authorID, body.Content)
+	if err != nil {
+		return err
+	}
+	return httperror.WriteJSON(w, http.StatusOK, post)
+}
+
 func (h *PostHandler) GetFeed(w http.ResponseWriter, r *http.Request) error {
 	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
 	if !ok {
@@ -51,33 +89,78 @@ func (h *PostHandler) GetFeed(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	cursor := r.URL.Query().Get("cursor")
+	cursorToken := r.URL.Query().Get("cursor")
+	sinceToken := r.URL.Query().Get("since")
 
-	posts, nextCursor, err := h.uc.GetFeed(r.Context(), userID, limit, cursor)
+	var (
+		resp domain.FeedResponse
+		err  error
+	)
+
+	if sinceToken != "" {
+		resp, err = h.uc.GetFeedSince(r.Context(), userID, limit, sinceToken)
+	} else {
+		resp, err = h.uc.GetFeed(r.Context(), userID, limit, cursorToken)
+	}
 	if err != nil {
 		return err
 	}
+
+	posts := resp.Posts
 	if posts == nil {
 		posts = []*entity.Post{}
 	}
 
-	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
-		"posts":       posts,
-		"next_cursor": nextCursor,
+	return httperror.WriteJSON(w, http.StatusOK, feedResponse{
+		Posts:      posts,
+		NextCursor: resp.NextCursor,
+		TopCursor:  resp.TopCursor,
 	})
 }
 
 func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) error {
-	rawID := chi.URLParam(r, "userID")
-	authorID, err := uuid.Parse(rawID)
+	authorID, err := uuid.Parse(chi.URLParam(r, "userID"))
 	if err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid user id")
 	}
 
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	cursor := r.URL.Query().Get("cursor")
+	cursorToken := r.URL.Query().Get("cursor")
 
-	posts, nextCursor, err := h.uc.GetUserPosts(r.Context(), authorID, limit, cursor)
+	resp, err := h.uc.GetUserPosts(r.Context(), authorID, limit, cursorToken)
+	if err != nil {
+		return err
+	}
+
+	posts := resp.Posts
+	if posts == nil {
+		posts = []*entity.Post{}
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, feedResponse{
+		Posts:      posts,
+		NextCursor: resp.NextCursor,
+		TopCursor:  resp.TopCursor,
+	})
+}
+
+func (h *PostHandler) GetPostsByIDs(w http.ResponseWriter, r *http.Request) error {
+	rawIDs := r.URL.Query().Get("ids")
+	if rawIDs == "" {
+		return commonapperr.BadRequest(commonapperr.CodeFieldRequired, "ids query param is required")
+	}
+
+	parts := strings.Split(rawIDs, ",")
+	ids := make([]uuid.UUID, 0, len(parts))
+	for _, p := range parts {
+		id, err := uuid.Parse(strings.TrimSpace(p))
+		if err != nil {
+			return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid id: "+p)
+		}
+		ids = append(ids, id)
+	}
+
+	posts, err := h.uc.GetPostsByIDs(r.Context(), ids)
 	if err != nil {
 		return err
 	}
@@ -85,10 +168,7 @@ func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) error
 		posts = []*entity.Post{}
 	}
 
-	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
-		"posts":       posts,
-		"next_cursor": nextCursor,
-	})
+	return httperror.WriteJSON(w, http.StatusOK, map[string]any{"posts": posts})
 }
 
 func (h *PostHandler) DeletePost(w http.ResponseWriter, r *http.Request) error {

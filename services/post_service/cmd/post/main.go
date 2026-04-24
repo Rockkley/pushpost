@@ -18,10 +18,11 @@ import (
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	kafkap "github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
-	"github.com/rockkley/pushpost/services/post_service/internal/cache/redis"
 	"github.com/rockkley/pushpost/services/post_service/internal/clients/friendship"
 	"github.com/rockkley/pushpost/services/post_service/internal/config"
 	"github.com/rockkley/pushpost/services/post_service/internal/domain/usecase"
+	feedkafka "github.com/rockkley/pushpost/services/post_service/internal/kafka"
+	"github.com/rockkley/pushpost/services/post_service/internal/realtime"
 	repopg "github.com/rockkley/pushpost/services/post_service/internal/repository/postgres"
 	"github.com/rockkley/pushpost/services/post_service/internal/transport"
 	myHTTP "github.com/rockkley/pushpost/services/post_service/internal/transport/http"
@@ -29,17 +30,14 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
-
 	if envFile == "" {
 		envFile = ".env"
 	}
-
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
-
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -47,51 +45,65 @@ func main() {
 	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
 	slog.SetDefault(appLog)
 
+	// ── Database ──────────────────────────────────────────────────────────────
 	db, err := database.Connect(database.Config{
 		URL:          cfg.Database.URL,
 		MaxOpenConns: cfg.Database.MaxOpenConns,
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
-
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer db.Close()
 
+	// ── Redis ─────────────────────────────────────────────────────────────────
 	rdb := goredis.NewClient(&goredis.Options{
 		Addr:     cfg.Redis.Addr,
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to redis", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer rdb.Close()
 
+	// ── Friendship gRPC client ────────────────────────────────────────────────
 	friendshipClient, err := friendship.NewGRPCClient(cfg.Friendship.GRPCAddr, cfg.Friendship.UseTLS)
-
 	if err != nil {
 		appLog.Error("failed to create friendship grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
-
 	defer func() {
-		if err = friendshipClient.Close(); err != nil {
+		if err := friendshipClient.Close(); err != nil {
 			appLog.Error("failed to close friendship grpc client", slog.Any("error", err))
 		}
 	}()
 
-	feedCache := redis.NewFeedCache(rdb)
+	// ── Repositories ──────────────────────────────────────────────────────────
 	uow := repopg.NewUnitOfWork(db)
-	uc := usecase.NewPostUseCase(uow, friendshipClient, feedCache)
-	handler := myHTTP.NewPostHandler(uc)
-	mux := transport.NewRouter(appLog, handler)
+	feedRepo := repopg.NewFeedRepository(db)
+	postRepo := repopg.NewPostRepository(db)
 
+	// ── Realtime notifier ─────────────────────────────────────────────────────
+	notifier := realtime.NewRedisStreamsNotifier(rdb, appLog)
+
+	// ── Use case ──────────────────────────────────────────────────────────────
+	uc := usecase.NewPostUseCase(uow, feedRepo, []byte(cfg.Cursor.Secret))
+
+	// ── HTTP handlers ─────────────────────────────────────────────────────────
+	postHandler := myHTTP.NewPostHandler(uc)
+	sseHandler := myHTTP.NewFeedSSEHandler(rdb)
+	mux := transport.NewRouter(appLog, postHandler, sseHandler)
+
+	// ── Kafka outbox worker ───────────────────────────────────────────────────
 	kafkaPublisher := kafkap.NewPublisher(cfg.Kafka.Brokers(), appLog)
-	defer kafkaPublisher.Close()
+	defer func() {
+		if err := kafkaPublisher.Close(); err != nil {
+			appLog.Error("failed to close kafka publisher", slog.Any("error", err))
+		}
+	}()
 
 	outboxWorker := outbox.NewWorker(
 		outboxpg.NewOutboxRepository(db),
@@ -100,11 +112,26 @@ func main() {
 		appLog,
 	)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// ── Feed consumer ─────────────────────────────────────────────────────────
+	feedConsumer := feedkafka.NewFeedConsumer(
+		cfg.Kafka.Brokers(),
+		"post_service.feed_builder",
+		[]string{
+			"post.created",
+			"post.updated",
+			"post.deleted",
+			"friendship.created",
+			"friendship.deleted",
+			"user.deleted",
+		},
+		friendshipClient,
+		feedRepo,
+		postRepo,
+		notifier,
+		appLog,
+	)
 
-	go outboxWorker.Run(ctx)
-
+	// ── HTTP server ───────────────────────────────────────────────────────────
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
 		Handler:      mux,
@@ -112,11 +139,21 @@ func main() {
 		WriteTimeout: cfg.HTTP.WriteTimeout,
 	}
 
-	serverErr := make(chan error, 1)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
+	go outboxWorker.Run(ctx)
+	go func() {
+		if err = feedConsumer.Run(ctx); err != nil {
+			appLog.Error("feed consumer stopped with error", slog.Any("error", err))
+		}
+	}()
+	defer feedConsumer.Close()
+
+	serverErr := make(chan error, 1)
 	go func() {
 		appLog.Info("post service started", slog.String("port", cfg.HTTP.Port))
-		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()
@@ -136,11 +173,9 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer shutdownCancel()
-
 	if err = srv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
-
 	appLog.Info("post service stopped")
 }

@@ -9,7 +9,7 @@ import (
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
+	friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
 )
 
 type GRPCClient struct {
@@ -24,8 +24,6 @@ func NewGRPCClient(addr string, useTLS bool) (*GRPCClient, error) {
 
 	var creds credentials.TransportCredentials
 	if useTLS {
-		// В проде здесь будет tls.NewClientTLSFromCert или mTLS
-		// Пока — системный TLS без проверки кастомного CA
 		creds = credentials.NewClientTLSFromCert(nil, "")
 	} else {
 		creds = insecure.NewCredentials()
@@ -35,14 +33,12 @@ func NewGRPCClient(addr string, useTLS bool) (*GRPCClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dial friendship service: %w", err)
 	}
-
 	return &GRPCClient{
 		conn:   conn,
 		client: friendshipv1.NewFriendshipServiceClient(conn),
 	}, nil
 }
 
-// Close явно закрывает gRPC соединение — вызвать в main через defer
 func (c *GRPCClient) Close() error {
 	return c.conn.Close()
 }

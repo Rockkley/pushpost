@@ -12,7 +12,7 @@ import (
 	myHTTP "github.com/rockkley/pushpost/services/post_service/internal/transport/http"
 )
 
-func NewRouter(log *slog.Logger, h *myHTTP.PostHandler) *chi.Mux {
+func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedSSEHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.RequestID)
@@ -30,9 +30,12 @@ func NewRouter(log *slog.Logger, h *myHTTP.PostHandler) *chi.Mux {
 
 		r.Route("/posts", func(r chi.Router) {
 			r.Post("/", handlerhttp.MakeHandler(h.CreatePost))
+			r.Get("/", handlerhttp.MakeHandler(h.GetPostsByIDs)) // GET /posts?ids=id1,id2
 			r.Get("/feed", handlerhttp.MakeHandler(h.GetFeed))
+			r.Get("/feed/subscribe", sseHandler.Subscribe) // SSE — не MakeHandler, управляет ответом сам
 			r.Get("/by-user/{userID}", handlerhttp.MakeHandler(h.GetUserPosts))
 			r.Get("/{postID}", handlerhttp.MakeHandler(h.GetPostByID))
+			r.Patch("/{postID}", handlerhttp.MakeHandler(h.UpdatePost))
 			r.Delete("/{postID}", handlerhttp.MakeHandler(h.DeletePost))
 		})
 	})

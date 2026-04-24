@@ -17,15 +17,3 @@ func ContentTooLong() apperror.AppError {
 func NotPostAuthor() apperror.AppError {
 	return apperror.Forbidden(CodeNotPostAuthor, "you are not the author of this post")
 }
-
-func MediaLimitExceeded() apperror.AppError {
-	return apperror.Validation(CodeMediaLimitExceeded, "media", "maximum 10 media files per post")
-}
-
-func InvalidMediaType() apperror.AppError {
-	return apperror.Validation(CodeInvalidMediaType, "media_type", "media type must be 'image' or 'video'")
-}
-
-func FileTooLarge() apperror.AppError {
-	return apperror.Validation(CodeFileTooLarge, "file_size_bytes", "file exceeds maximum allowed size")
-}
