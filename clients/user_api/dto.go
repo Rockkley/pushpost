@@ -16,5 +16,8 @@ type UserResponse struct {
 	Username     string    `json:"username"`
 	Email        string    `json:"email"`
 	PasswordHash string    `json:"password_hash"`
-	CreatedAt    time.Time `json:"createdAt"`
+	Status       string    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
 }
+
+func (u *UserResponse) IsActive() bool { return u.Status == "active" }

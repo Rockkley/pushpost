@@ -4,10 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/redis/go-redis/v9"
-	"github.com/rockkley/pushpost/clients/user_api"
-	"github.com/rockkley/pushpost/services/common_service/jwt"
-	"github.com/rockkley/pushpost/services/common_service/logger"
 	stdlog "log"
 	"log/slog"
 	"net/http"
@@ -16,27 +12,29 @@ import (
 	"syscall"
 
 	"github.com/joho/godotenv"
+	"github.com/redis/go-redis/v9"
+	"github.com/rockkley/pushpost/clients/user_api"
 	"github.com/rockkley/pushpost/services/auth_service/internal/config"
 	"github.com/rockkley/pushpost/services/auth_service/internal/domain/usecase"
+	smtpemail "github.com/rockkley/pushpost/services/auth_service/internal/email/smtp"
 	redisrepo "github.com/rockkley/pushpost/services/auth_service/internal/repository/redis"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport"
 	myHTTP "github.com/rockkley/pushpost/services/auth_service/internal/transport/http"
 	"github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
+	"github.com/rockkley/pushpost/services/common_service/jwt"
+	"github.com/rockkley/pushpost/services/common_service/logger"
 )
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
-
 	if envFile == "" {
 		envFile = ".env"
 	}
-
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
-
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -47,7 +45,6 @@ func main() {
 	userClient, err := user_api.NewUserClient(cfg.UserSvc.BaseURL, &http.Client{
 		Timeout: cfg.UserSvc.Timeout,
 	})
-
 	if err != nil {
 		appLog.Error("failed to create user client", slog.Any("error", err))
 		os.Exit(1)
@@ -58,17 +55,26 @@ func main() {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
-
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to Redis", slog.Any("error", err))
 		os.Exit(1)
 	}
-
 	defer rdb.Close()
 
 	sessionStore := redisrepo.NewSessionStore(rdb, cfg.Redis.Timeout)
+	otpStore := redisrepo.NewOTPStore(rdb, cfg.Redis.Timeout)
+
+	emailSender := smtpemail.NewSender(smtpemail.Config{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		Username: cfg.SMTP.User,
+		Password: cfg.SMTP.Pass,
+		From:     cfg.SMTP.From,
+		AppName:  cfg.SMTP.AppName,
+	})
+
 	jwtManager := jwt.NewManager(cfg.JWT.Secret, &cfg.JWT.AccessTTL)
-	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, jwtManager)
+	authUsecase := usecase.NewAuthUsecase(userClient, sessionStore, otpStore, emailSender, jwtManager)
 	authHandler := myHTTP.NewAuthHandler(authUsecase)
 	authMiddleware := middleware.NewAuthMiddleware(authUsecase)
 	mux := transport.NewRouter(appLog, authMiddleware, authHandler)

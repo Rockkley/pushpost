@@ -72,6 +72,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	profileProxy, err := proxy.NewStrippingAuth(cfg.Services.ProfileService, timeout)
+	if err != nil {
+		appLog.Error("failed to create profile proxy", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
@@ -97,6 +103,7 @@ func main() {
 		Friendship: friendshipProxy,
 		Message:    messageProxy,
 		Post:       postProxy,
+		Profile:    profileProxy,
 	}, *profileHandler)
 
 	srv := &http.Server{

@@ -12,4 +12,6 @@ type AuthUsecase interface {
 	Logout(ctx context.Context, tokenID uuid.UUID) error
 	//GetSessionByToken(ctx context.Context, tokenStr string) (*domain.Session, error)
 	AuthenticateRequest(ctx context.Context, tokenStr string) (*Session, error)
+	VerifyEmail(ctx context.Context, email, code string) error
+	ResendOTP(ctx context.Context, email string) error
 }

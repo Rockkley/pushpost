@@ -9,7 +9,6 @@ CREATE TABLE posts
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     deleted_at TIMESTAMPTZ,
-    
 
     CONSTRAINT post_content_not_empty  CHECK (char_length(content) >= 1),
     CONSTRAINT post_content_max_length CHECK (char_length(content) <= 5000)
@@ -17,6 +16,7 @@ CREATE TABLE posts
 
 CREATE INDEX idx_posts_author_created ON posts (author_id, created_at DESC)
     WHERE deleted_at IS NULL;
+
 CREATE INDEX idx_posts_created ON posts (created_at DESC)
     WHERE deleted_at IS NULL;
 

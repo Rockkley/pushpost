@@ -215,3 +215,19 @@ func (u *UserUseCase) GetUserByUsername(ctx context.Context, username string) (*
 
 	return user, nil
 }
+
+func (u *UserUseCase) ActivateUser(ctx context.Context, email string) error {
+	log := ctxlog.From(ctx).With(
+		slog.String("op", "UserUseCase.ActivateUser"),
+		slog.String("email", email),
+	)
+
+	err := u.uow.Reader().ActivateUser(ctx, email)
+	if err != nil {
+		log.Error("failed to activate user", slog.Any("error", err))
+		return err
+	}
+
+	log.Info("user activated")
+	return nil
+}

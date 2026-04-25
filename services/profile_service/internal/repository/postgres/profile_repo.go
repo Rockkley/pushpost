@@ -74,3 +74,46 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 
 	return &p, nil
 }
+
+func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile) error {
+	query := `
+		UPDATE profiles
+		SET    display_name = $2,
+		       first_name = $3,
+		       last_name = $4,
+		       birth_date = $5,
+		       avatar_url = $6,
+		       bio = $7,
+		       telegram_link = $8,
+		       is_private = $9
+		WHERE  user_id = $1
+		  AND  deleted_at IS NULL`
+
+	res, err := r.exec.ExecContext(
+		ctx,
+		query,
+		profile.UserID,
+		profile.DisplayName,
+		profile.FirstName,
+		profile.LastName,
+		profile.BirthDate,
+		profile.AvatarURL,
+		profile.Bio,
+		profile.TelegramLink,
+		profile.IsPrivate,
+	)
+	if err != nil {
+		return commonapperr.MapPostgresError(err, "update profile")
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update profile rows affected: %w", err)
+	}
+
+	if affected == 0 {
+		return domain.ErrProfileNotFound
+	}
+
+	return nil
+}

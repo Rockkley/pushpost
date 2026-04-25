@@ -22,3 +22,6 @@ func (u *ProfileUseCase) GetByUsername(ctx context.Context, username string) (*e
 func (u *ProfileUseCase) CreateProfile(ctx context.Context, profile *entity.Profile) error {
 	return u.profileRepo.Create(ctx, profile)
 }
+func (u *ProfileUseCase) UpdateProfile(ctx context.Context, profile *entity.Profile) error {
+	return u.profileRepo.Update(ctx, profile)
+}

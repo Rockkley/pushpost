@@ -29,6 +29,7 @@ type ServicesConfig struct {
 	UserService        string        `env:"USER_SERVICE_URL"          env-required:"true"`
 	FriendshipService  string        `env:"FRIENDSHIP_SERVICE_URL"    env-required:"true"`
 	ProfileServiceGRPC string        `env:"PROFILE_SERVICE_GRPC_ADDR" env-required:"true"`
+	ProfileService     string        `env:"PROFILE_SERVICE_URL"       env-required:"true"`
 	MessageService     string        `env:"MESSAGE_SERVICE_URL"     env-required:"true"`
 	PostService        string        `env:"POST_SERVICE_URL"          env-required:"true"`
 	Timeout            time.Duration `env:"UPSTREAM_TIMEOUT"          env-default:"10s"`

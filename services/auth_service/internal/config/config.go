@@ -11,6 +11,7 @@ type Config struct {
 	JWT     JWTConfig
 	UserSvc UserServiceConfig
 	Redis   RedisConfig
+	SMTP    SMTPConfig
 }
 
 type HTTPConfig struct {
@@ -18,6 +19,15 @@ type HTTPConfig struct {
 	ReadTimeout     time.Duration `env:"HTTP_READ_TIMEOUT"     env-default:"5s"`
 	WriteTimeout    time.Duration `env:"HTTP_WRITE_TIMEOUT"    env-default:"10s"`
 	ShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" env-default:"30s"`
+}
+
+type SMTPConfig struct {
+	Host    string `env:"SMTP_HOST"     env-required:"true"`
+	Port    int    `env:"SMTP_PORT"     env-default:"587"`
+	User    string `env:"SMTP_USER"     env-required:"true"`
+	Pass    string `env:"SMTP_PASS"     env-required:"true"`
+	From    string `env:"SMTP_FROM"     env-required:"true"`
+	AppName string `env:"APP_NAME"      env-default:"PushPost"`
 }
 
 type JWTConfig struct {

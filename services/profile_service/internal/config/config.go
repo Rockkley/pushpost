@@ -9,9 +9,17 @@ import (
 )
 
 type Config struct {
+	HTTP     HTTPConfig
 	GRPC     GRPCConfig
 	Database DatabaseConfig
 	Kafka    KafkaConfig
+}
+
+type HTTPConfig struct {
+	Port            string        `env:"PORT"                  env-default:"8083"`
+	ReadTimeout     time.Duration `env:"HTTP_READ_TIMEOUT"     env-default:"10s"`
+	WriteTimeout    time.Duration `env:"HTTP_WRITE_TIMEOUT"    env-default:"0s"`
+	ShutdownTimeout time.Duration `env:"HTTP_SHUTDOWN_TIMEOUT" env-default:"30s"`
 }
 
 type GRPCConfig struct {

@@ -200,3 +200,36 @@ func decodeError(resp *http.Response) error {
 		return fmt.Errorf("server error (%d): %s", resp.StatusCode, msg)
 	}
 }
+
+func (c *UserClient) ActivateUser(ctx context.Context, email string) error {
+	endpoint, err := url.JoinPath(c.baseURL, "users", "activate")
+
+	if err != nil {
+		return fmt.Errorf("build activate endpoint: %w", err)
+	}
+
+	body, err := json.Marshal(map[string]string{"email": email})
+
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+
+	if err != nil {
+		return fmt.Errorf("build request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.client.Do(req)
+
+	if err != nil {
+		return fmt.Errorf("execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return decodeError(resp)
+	}
+	return nil
+}

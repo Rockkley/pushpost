@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/rockkley/pushpost/services/user_service/internal/entity"
 )
@@ -14,4 +15,5 @@ type UserRepositoryInterface interface {
 	EmailExists(ctx context.Context, email string) (bool, error)
 	UsernameExists(ctx context.Context, username string) (bool, error)
 	SoftDelete(ctx context.Context, id uuid.UUID) error
+	ActivateUser(ctx context.Context, email string) error
 }

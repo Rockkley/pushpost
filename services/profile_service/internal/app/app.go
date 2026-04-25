@@ -2,9 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
+	"net/http"
 
 	"google.golang.org/grpc"
 
@@ -14,14 +16,19 @@ import (
 	"github.com/rockkley/pushpost/services/profile_service/internal/domain/usecase"
 	"github.com/rockkley/pushpost/services/profile_service/internal/kafka"
 	repopg "github.com/rockkley/pushpost/services/profile_service/internal/repository/postgres"
+	httptransport "github.com/rockkley/pushpost/services/profile_service/internal/transport"
 	grpctransport "github.com/rockkley/pushpost/services/profile_service/internal/transport/grpc"
+	profilehttp "github.com/rockkley/pushpost/services/profile_service/internal/transport/http"
 )
 
 type App struct {
-	consumer *kafka.Consumer
-	grpcSrv  *grpc.Server
-	grpcAddr string
-	log      *slog.Logger
+	consumer  *kafka.Consumer
+	grpcSrv   *grpc.Server
+	grpcAddr  string
+	httpSrv   *http.Server
+	httpAddr  string
+	httpClose func(context.Context) error
+	log       *slog.Logger
 }
 
 func New(cfg *config.Config, log *slog.Logger) (*App, error) {
@@ -52,11 +59,23 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 	grpcSrv := grpc.NewServer()
 	profilev1.RegisterProfileServiceServer(grpcSrv, grpctransport.NewProfileServer(uc, log))
 
+	httpHandler := profilehttp.NewProfileHandler(uc)
+	httpRouter := httptransport.NewRouter(log, httpHandler)
+	httpSrv := &http.Server{
+		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
+		Handler:      httpRouter,
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+	}
+
 	return &App{
-		consumer: consumer,
-		grpcSrv:  grpcSrv,
-		grpcAddr: fmt.Sprintf(":%s", cfg.GRPC.Port),
-		log:      log,
+		consumer:  consumer,
+		grpcSrv:   grpcSrv,
+		grpcAddr:  fmt.Sprintf(":%s", cfg.GRPC.Port),
+		httpSrv:   httpSrv,
+		httpAddr:  fmt.Sprintf(":%s", cfg.HTTP.Port),
+		httpClose: httpSrv.Shutdown,
+		log:       log,
 	}, nil
 }
 
@@ -79,6 +98,13 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	go func() {
+		a.log.Info("profile HTTP server started", slog.String("addr", a.httpAddr))
+		if err := a.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+	}()
+
+	go func() {
 		a.log.Info("profile kafka consumer started")
 		if err := a.consumer.Run(ctx); err != nil {
 			serverErr <- err
@@ -92,6 +118,9 @@ func (a *App) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		a.log.Info("profile service shutting down")
 		a.grpcSrv.GracefulStop()
+		if err = a.httpClose(context.Background()); err != nil {
+			return fmt.Errorf("shutdown http server: %w", err)
+		}
 
 		return nil
 	}

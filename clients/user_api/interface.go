@@ -2,6 +2,7 @@ package user_api
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 )
 
@@ -10,4 +11,5 @@ type Client interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (*UserResponse, error)
 	GetUserByEmail(ctx context.Context, email string) (*UserResponse, error)
 	GetUserByUsername(ctx context.Context, username string) (*UserResponse, error)
+	ActivateUser(ctx context.Context, email string) error
 }

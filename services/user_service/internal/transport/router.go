@@ -1,12 +1,12 @@
 package transport
 
 import (
-	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
-	"github.com/rockkley/pushpost/services/common_service/httplog"
 	"log/slog"
 
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
+	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
+	"github.com/rockkley/pushpost/services/common_service/httplog"
 	myHTTP "github.com/rockkley/pushpost/services/user_service/internal/transport/http"
 )
 
@@ -20,6 +20,7 @@ func NewRouter(log *slog.Logger, userHandler *myHTTP.UserHandler) *chi.Mux {
 
 	r.Route("/users", func(r chi.Router) {
 		r.Post("/", handlerhttp.MakeHandler(userHandler.CreateUser))
+		r.Post("/activate", handlerhttp.MakeHandler(userHandler.ActivateUser))
 		r.Get("/{id}", handlerhttp.MakeHandler(userHandler.GetUserByID))
 		r.Get("/by-email", handlerhttp.MakeHandler(userHandler.GetUserByEmail))
 		r.Get("/by-username/{username}", handlerhttp.MakeHandler(userHandler.GetUserByUsername))

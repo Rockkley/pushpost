@@ -26,6 +26,8 @@ func NewRouter(
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", handlerhttp.MakeHandler(authHandler.Register))
 		r.Post("/login", handlerhttp.MakeHandler(authHandler.Login))
+		r.Post("/verify-email", handlerhttp.MakeHandler(authHandler.VerifyEmail))
+		r.Post("/resend-otp", handlerhttp.MakeHandler(authHandler.ResendOTP))
 
 		r.Group(func(r chi.Router) {
 			r.Use(authMW.RequireAuth)

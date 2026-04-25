@@ -19,6 +19,7 @@ func NewRouter(log *slog.Logger, h *myHTTP.ProfileHandler) *chi.Mux {
 
 	r.Route("/profiles", func(r chi.Router) {
 		r.Get("/by-username/{username}", handlerhttp.MakeHandler(h.GetByUsername))
+		r.Patch("/me", handlerhttp.MakeHandler(h.UpdateMe))
 	})
 
 	return r

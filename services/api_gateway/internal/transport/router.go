@@ -20,6 +20,7 @@ type Proxies struct {
 	Friendship *httputil.ReverseProxy
 	Message    *httputil.ReverseProxy
 	Post       *httputil.ReverseProxy
+	Profile    *httputil.ReverseProxy
 }
 
 func RewriteUsernameToPath(path string) string {
@@ -60,6 +61,9 @@ func NewRouter(
 		r.Handle("/messages/*", http.HandlerFunc(p.Message.ServeHTTP))
 		r.Handle("/posts", http.HandlerFunc(p.Post.ServeHTTP))
 		r.Handle("/posts/*", http.HandlerFunc(p.Post.ServeHTTP))
+		r.Handle("/profiles", http.HandlerFunc(p.Profile.ServeHTTP))
+		r.Handle("/profiles/*", http.HandlerFunc(p.Profile.ServeHTTP))
+
 	})
 
 	r.Group(func(r chi.Router) {

@@ -103,3 +103,23 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 
 	return httperror.WriteJSON(w, http.StatusOK, user)
 }
+
+func (h *UserHandler) ActivateUser(w http.ResponseWriter, r *http.Request) error {
+	var body struct {
+		Email string `json:"email"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
+	}
+
+	if body.Email == "" {
+		return commonapperr.Validation(commonapperr.CodeFieldRequired, "email", "email is required")
+	}
+
+	if err := h.userUseCase.ActivateUser(r.Context(), body.Email); err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "user activated"})
+}
