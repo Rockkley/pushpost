@@ -50,8 +50,8 @@ func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Req
 	log := ctxlog.From(r.Context()).With(slog.String("op", "ProfileHandler.GetProfileByUsername"))
 
 	username := strings.TrimSpace(chi.URLParam(r, "username"))
-	if !usernamePathRegex.MatchString(username) {
 
+	if !usernamePathRegex.MatchString(username) {
 		return commonapperr.NotFound("user_not_found", "user not found")
 	}
 
@@ -59,7 +59,6 @@ func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Req
 
 	if err != nil {
 		if errors.Is(err, profile_grpc.ErrNotFound) {
-
 			return commonapperr.NotFound("user_not_found", "user not found")
 		}
 
@@ -69,7 +68,6 @@ func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Req
 	userID, parseErr := uuid.Parse(profile.UserID)
 
 	if parseErr != nil {
-
 		return commonapperr.Service("invalid profile user_id", parseErr)
 	}
 
@@ -88,6 +86,7 @@ func (h *ProfileHandler) GetProfileByUsername(w http.ResponseWriter, r *http.Req
 	}
 
 	viewerID, ok := gwmiddleware.UserIDFromContext(r.Context())
+
 	if ok && viewerID != userID {
 		rel, relErr := h.friendshipClient.GetRelationship(r.Context(), viewerID, userID)
 		if relErr == nil {

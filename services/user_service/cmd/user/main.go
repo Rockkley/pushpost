@@ -70,7 +70,6 @@ func main() {
 		}
 	}()
 
-	//publisher := &noopPublisher{log: appLog}
 	workerRepo := postgres2.NewOutboxRepository(db)
 
 	outboxWorker := outbox.NewWorker(
@@ -111,10 +110,8 @@ func main() {
 		appLog.Info("user service shutting down...")
 	}
 
-	// Останавливаем воркер
 	cancel()
 
-	// Отдельный ctx только для graceful shutdown HTTP
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer shutdownCancel()
 
@@ -124,16 +121,4 @@ func main() {
 	}
 
 	appLog.Info("user service stopped")
-}
-
-type noopPublisher struct {
-	log *slog.Logger
-}
-
-func (p *noopPublisher) Publish(ctx context.Context, event *outbox.OutboxEvent) error {
-	p.log.Info("noop publisher: event skipped",
-		slog.String("event_type", event.EventType),
-		slog.String("aggregate_id", event.AggregateID),
-	)
-	return nil
 }

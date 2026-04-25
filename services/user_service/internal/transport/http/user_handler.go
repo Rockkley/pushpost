@@ -25,19 +25,16 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) error {
 	var req dto.CreateUserRequestDTO
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
 
 	if err := req.Validate(); err != nil {
-
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, err.Error())
 	}
 
 	user, err := h.userUseCase.CreateUser(r.Context(), *mapper.CreateUserFromRequestToUseCase(req))
 
 	if err != nil {
-
 		return err
 	}
 
@@ -48,7 +45,6 @@ func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) err
 	email := r.URL.Query().Get("email")
 
 	if email == "" {
-
 		return commonapperr.Validation(
 			commonapperr.CodeFieldRequired, "email", "email query parameter is required",
 		)
@@ -57,7 +53,6 @@ func (h *UserHandler) GetUserByEmail(w http.ResponseWriter, r *http.Request) err
 	user, err := h.userUseCase.GetUserByEmail(r.Context(), email)
 
 	if err != nil {
-
 		return err
 	}
 
@@ -70,14 +65,12 @@ func (h *UserHandler) GetUserByID(w http.ResponseWriter, r *http.Request) error 
 	id, err := uuid.Parse(rawID)
 
 	if err != nil {
-
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid user id")
 	}
 
 	user, err := h.userUseCase.GetUserByID(r.Context(), id)
 
 	if err != nil {
-
 		return err // UserNotFound / UserDeleted
 	}
 
@@ -88,7 +81,6 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	username := chi.URLParam(r, "username")
 
 	if username == "" {
-
 		return commonapperr.Validation(
 			commonapperr.CodeFieldRequired, "username", "username is required",
 		)
@@ -97,7 +89,6 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	user, err := h.userUseCase.GetUserByUsername(r.Context(), username)
 
 	if err != nil {
-
 		return err
 	}
 

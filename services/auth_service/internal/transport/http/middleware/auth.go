@@ -28,16 +28,20 @@ func NewAuthMiddleware(authUsecase domain.AuthUsecase) *AuthMiddleware {
 func (m *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		tokenStr, ok := extractBearerToken(r.Header.Get("Authorization"))
+
 		if !ok {
 			httperror.HandleError(w, r, commonapperr.Unauthorized(
 				commonapperr.CodeUnauthorized, "missing or invalid authorization header",
 			))
+
 			return
 		}
 
 		session, err := m.authUsecase.AuthenticateRequest(r.Context(), tokenStr)
+
 		if err != nil {
 			httperror.HandleError(w, r, err)
+
 			return
 		}
 
@@ -55,11 +59,13 @@ func extractBearerToken(header string) (string, bool) {
 	}
 
 	parts := strings.SplitN(header, " ", 2)
+
 	if len(parts) != 2 || parts[0] != "Bearer" {
 		return "", false
 	}
 
 	token := strings.TrimSpace(parts[1])
+
 	if token == "" {
 		return "", false
 	}

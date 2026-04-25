@@ -28,15 +28,19 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	validationErrors := dto.ValidateRegisterUser(req)
+
 	if len(validationErrors) > 0 {
 		errMap := make(map[string]string, len(validationErrors))
+
 		for _, e := range validationErrors {
 			errMap[e.Field] = e.Code
 		}
+
 		return commonapperr.ValidationFields(errMap)
 	}
 
 	user, err := h.authUseCase.Register(r.Context(), req)
+
 	if err != nil {
 		return err
 	}
@@ -46,6 +50,7 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	var req dto.LoginUserDTO
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
@@ -55,6 +60,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	token, err := h.authUseCase.Login(r.Context(), req)
+
 	if err != nil {
 		return err
 	}
@@ -64,6 +70,7 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 	sessionID, ok := r.Context().Value(middleware.CtxSessionIDKey).(uuid.UUID)
+
 	if !ok {
 		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "invalid session")
 	}
@@ -77,6 +84,7 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) error {
 
 func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) error {
 	var req httpDto.VerifyEmailRequestDTO
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
@@ -94,6 +102,7 @@ func (h *AuthHandler) VerifyEmail(w http.ResponseWriter, r *http.Request) error 
 
 func (h *AuthHandler) ResendOTP(w http.ResponseWriter, r *http.Request) error {
 	var req httpDto.ResendOTPRequestDTO
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
@@ -106,7 +115,6 @@ func (h *AuthHandler) ResendOTP(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 
-	// Всегда одинаковый ответ — не раскрываем, существует ли email
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{
 		"message": "if this email is registered and unverified, you will receive a new code",
 	})

@@ -27,14 +27,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -45,6 +48,7 @@ func main() {
 	userClient, err := user_api.NewUserClient(cfg.UserSvc.BaseURL, &http.Client{
 		Timeout: cfg.UserSvc.Timeout,
 	})
+
 	if err != nil {
 		appLog.Error("failed to create user client", slog.Any("error", err))
 		os.Exit(1)
@@ -55,6 +59,7 @@ func main() {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
+
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to Redis", slog.Any("error", err))
 		os.Exit(1)

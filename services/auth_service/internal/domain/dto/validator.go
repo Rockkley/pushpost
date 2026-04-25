@@ -53,7 +53,6 @@ func ValidateRegisterUser(dto RegisterUserDto) []*ValidationError {
 	}
 
 	if err := ValidatePassword(dto.Password); err != nil {
-
 		errs = append(errs, err)
 	}
 
@@ -83,14 +82,12 @@ func ValidateEmail(email string) (bool, *ValidationError) {
 	email = strings.TrimSpace(email)
 
 	if email == "" {
-
 		return false, newError(ErrEmailRequired, "email")
 	}
 
 	email = strings.ToLower(email)
 
 	if !emailRegex.MatchString(email) {
-
 		return false, newError(ErrEmailInvalid, "email")
 	}
 
@@ -119,13 +116,11 @@ func ValidatePassword(password string) *ValidationError {
 		}
 
 		if hasLetters && hasDigits {
-
 			return nil
 		}
 	}
 
 	if !hasLetters || !hasDigits {
-
 		return newError(ErrPasswordWeak, "password")
 	}
 

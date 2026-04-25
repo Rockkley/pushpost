@@ -43,42 +43,49 @@ func main() {
 	timeout := cfg.Services.Timeout
 
 	authProxy, err := proxy.New(cfg.Services.AuthService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create auth proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	userProxy, err := proxy.NewStrippingAuth(cfg.Services.UserService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create user proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	friendshipProxy, err := proxy.NewStrippingAuth(cfg.Services.FriendshipService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create friendship proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	messageProxy, err := proxy.NewStrippingAuth(cfg.Services.MessageService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create message proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	postProxy, err := proxy.NewStrippingAuth(cfg.Services.PostService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create post proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	profileProxy, err := proxy.NewStrippingAuth(cfg.Services.ProfileService, timeout)
+
 	if err != nil {
 		appLog.Error("failed to create profile proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
+
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
 		os.Exit(1)
@@ -88,6 +95,7 @@ func main() {
 		cfg.Services.FriendshipService,
 		&http.Client{Timeout: timeout},
 	)
+
 	if err != nil {
 		appLog.Error("failed to create friendship client", slog.Any("error", err))
 		os.Exit(1)

@@ -36,11 +36,14 @@ func (s *OTPStore) Save(ctx context.Context, email, code string, ttl time.Durati
 func (s *OTPStore) Get(ctx context.Context, email string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+
 	code, err := s.rdb.Get(ctx, otpKey(email)).Result()
+
 	if err != nil {
 		if errors.Is(err, redis.Nil) {
 			return "", ErrOTPNotFound
 		}
+
 		return "", fmt.Errorf("redis get otp: %w", err)
 	}
 
@@ -57,12 +60,14 @@ func (s *OTPStore) Delete(ctx context.Context, email string) error {
 func (s *OTPStore) IncrAttempts(ctx context.Context, email string, ttl time.Duration) (int64, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+
 	aKey := attemptsKey(email)
 	count, err := s.rdb.Incr(ctx, aKey).Result()
 
 	if err != nil {
 		return 0, fmt.Errorf("redis incr otp attempts: %w", err)
 	}
+
 	if count == 1 {
 		s.rdb.Expire(ctx, aKey, ttl)
 	}
@@ -80,6 +85,7 @@ func (s *OTPStore) SetCooldown(ctx context.Context, email string, ttl time.Durat
 func (s *OTPStore) HasCooldown(ctx context.Context, email string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
+
 	n, err := s.rdb.Exists(ctx, cooldownKey(email)).Result()
 
 	if err != nil {

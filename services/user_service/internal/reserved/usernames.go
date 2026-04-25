@@ -38,6 +38,7 @@ var usernames = map[string]struct{}{
 // IsReserved возвращает true если нормализованное имя зарезервировано.
 func IsReserved(username string) bool {
 	_, ok := usernames[normalize(username)]
+
 	return ok
 }
 

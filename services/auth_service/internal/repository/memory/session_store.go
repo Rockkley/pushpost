@@ -24,7 +24,9 @@ func NewSessionStore() *SessionStore {
 func (s *SessionStore) Save(ctx context.Context, session *domain.Session) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.data[session.SessionID] = session
+
 	return nil
 }
 
@@ -33,6 +35,7 @@ func (s *SessionStore) Get(ctx context.Context, sessionID uuid.UUID) (*domain.Se
 	defer s.mu.RUnlock()
 
 	session, ok := s.data[sessionID]
+
 	if !ok {
 		return nil, ErrSessionNotFound
 	}
@@ -45,5 +48,6 @@ func (s *SessionStore) Delete(ctx context.Context, sessionID uuid.UUID) error {
 	defer s.mu.Unlock()
 
 	delete(s.data, sessionID)
+
 	return nil
 }

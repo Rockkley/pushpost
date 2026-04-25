@@ -18,11 +18,14 @@ func (dto *CreateUserDTO) Validate() error {
 	if dto.Username == "" {
 		return ErrInvalidUsername
 	}
+
 	if dto.Email == "" {
 		return ErrInvalidEmail
 	}
+
 	if dto.PasswordHash == "" {
 		return ErrInvalidPassword
 	}
+
 	return nil
 }

@@ -31,14 +31,12 @@ func (s *SessionStore) Save(ctx context.Context, session *domain.Session) error 
 	ttl := time.Until(time.Unix(session.Expires, 0))
 
 	if ttl <= 0 {
-
 		return fmt.Errorf("session already expired")
 	}
 
 	data, err := json.Marshal(session)
 
 	if err != nil {
-
 		return fmt.Errorf("session marshal: %w", err)
 	}
 

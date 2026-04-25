@@ -9,6 +9,7 @@ import (
 
 func New(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, error) {
 	target, err := url.Parse(upstreamURL)
+
 	if err != nil {
 		return nil, err
 	}
@@ -26,6 +27,7 @@ func New(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, err
 
 func NewStrippingAuth(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, error) {
 	target, err := url.Parse(upstreamURL)
+
 	if err != nil {
 		return nil, err
 	}
@@ -50,7 +52,6 @@ func NewStrippingAuthWithRewrite(
 	target, err := url.Parse(upstreamURL)
 
 	if err != nil {
-
 		return nil, err
 	}
 

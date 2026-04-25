@@ -14,5 +14,6 @@ func (dto *AuthenticateUserRequestDTO) Validate() error {
 	if dto.PasswordHash == "" {
 		return errors.New("passwordHash is required")
 	}
+
 	return nil
 }

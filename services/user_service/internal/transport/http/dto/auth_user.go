@@ -11,8 +11,10 @@ func (dto *AuthenticateUserRequestDTO) Validate() error {
 	if dto.Email == "" {
 		return errors.New("email is required")
 	}
+
 	if dto.PasswordHash == "" {
 		return errors.New("password_hash is required")
 	}
+
 	return nil
 }

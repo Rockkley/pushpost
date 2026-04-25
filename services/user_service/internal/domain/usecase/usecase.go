@@ -30,6 +30,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 
 	if err := req.Validate(); err != nil {
 		log.Debug("dto validation failed", slog.Any("error", err))
+
 		return nil, err
 	}
 
@@ -54,6 +55,7 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 		EventType string          `json:"event_type"`
 		Payload   json.RawMessage `json:"payload"`
 	}
+
 	payload, err := json.Marshal(envelope{
 		EventType: "user.created",
 		Payload:   inner,
@@ -65,7 +67,6 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 
 	err = u.uow.Do(ctx, func(tx domain.Tx) error {
 		if err = tx.Users().Create(ctx, user); err != nil {
-
 			return err
 		}
 
@@ -79,7 +80,6 @@ func (u *UserUseCase) CreateUser(ctx context.Context, req dto.CreateUserDTO) (*e
 	})
 
 	if err != nil {
-
 		log.Error("failed to create user", slog.Any("error", err))
 
 		return nil, err
@@ -94,7 +94,6 @@ func (u *UserUseCase) GetUserByEmail(ctx context.Context, email string) (*entity
 	log := ctxlog.From(ctx).With(slog.String("op", "UserUseCase.GetUserByEmail"))
 
 	if email == "" {
-
 		return nil, commonapperr.Validation(
 			commonapperr.CodeFieldRequired, "email", "email is required",
 		)
@@ -117,8 +116,6 @@ func (u *UserUseCase) GetUserByID(ctx context.Context, id uuid.UUID) (*entity.Us
 		slog.String("user_id", id.String()),
 	)
 
-	// FindByID not filtering deleted_at in SQL
-	// we check it explicitly in the use case to distinguish "not found" and "deleted" at the business logic level
 	user, err := u.uow.Reader().FindByID(ctx, id)
 
 	if err != nil {
@@ -143,6 +140,7 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 	)
 
 	inner, err := json.Marshal(domain.UserDeletedEvent{UserID: id.String()})
+
 	if err != nil {
 		return commonapperr.Internal("marshal user.deleted event", err)
 	}
@@ -151,25 +149,31 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 		EventType string          `json:"event_type"`
 		Payload   json.RawMessage `json:"payload"`
 	}
+
 	payload, err := json.Marshal(envelope{
 		EventType: "user.deleted",
 		Payload:   inner,
 	})
+
 	if err != nil {
 		return commonapperr.Internal("marshal user.deleted envelope", err)
 	}
 
 	err = u.uow.Do(ctx, func(tx domain.Tx) error {
 		user, err := tx.Users().FindByID(ctx, id)
+
 		if err != nil {
 			return err
 		}
+
 		if user.IsDeleted() {
 			return apperr.UserNotFound()
 		}
+
 		if err = tx.Users().SoftDelete(ctx, id); err != nil {
 			return err
 		}
+
 		return tx.Outbox().Insert(ctx, &outbox.OutboxEvent{
 			ID:            uuid.New(),
 			AggregateID:   id.String(),
@@ -178,12 +182,15 @@ func (u *UserUseCase) DeleteUser(ctx context.Context, id uuid.UUID) error {
 			Payload:       payload,
 		})
 	})
+
 	if err != nil {
 		log.Error("failed to delete user", slog.Any("error", err))
+
 		return err
 	}
 
 	log.Info("user deleted")
+
 	return nil
 }
 
@@ -194,7 +201,6 @@ func (u *UserUseCase) GetUserByUsername(ctx context.Context, username string) (*
 	)
 
 	if username == "" {
-
 		return nil, commonapperr.Validation(
 			commonapperr.CodeFieldRequired, "username", "username is required",
 		)
@@ -203,13 +209,12 @@ func (u *UserUseCase) GetUserByUsername(ctx context.Context, username string) (*
 	user, err := u.uow.Reader().FindByUsername(ctx, username)
 
 	if err != nil {
-
 		log.Debug("user not found by username", slog.Any("error", err))
+
 		return nil, err
 	}
 
 	if user.IsDeleted() {
-
 		return nil, apperr.UserNotFound()
 	}
 
@@ -223,11 +228,14 @@ func (u *UserUseCase) ActivateUser(ctx context.Context, email string) error {
 	)
 
 	err := u.uow.Reader().ActivateUser(ctx, email)
+
 	if err != nil {
 		log.Error("failed to activate user", slog.Any("error", err))
+
 		return err
 	}
 
 	log.Info("user activated")
+
 	return nil
 }

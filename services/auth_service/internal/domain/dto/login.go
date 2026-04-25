@@ -15,6 +15,7 @@ func (dto *LoginUserDTO) Validate() error {
 	if dto.Email == "" {
 		return errors.New("email is required")
 	}
+
 	if dto.Password == "" {
 		return errors.New("password is required")
 	}

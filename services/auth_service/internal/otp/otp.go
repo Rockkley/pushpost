@@ -9,8 +9,9 @@ import (
 const digits = 6
 
 func Generate() (string, error) {
-	max := big.NewInt(1_000_000)
-	n, err := rand.Int(rand.Reader, max)
+	maximum := big.NewInt(1_000_000)
+	n, err := rand.Int(rand.Reader, maximum)
+
 	if err != nil {
 		return "", fmt.Errorf("generate random OTP: %w", err)
 	}
