@@ -150,7 +150,6 @@ func (c *FeedConsumer) handlePostCreated(ctx context.Context, payload json.RawMe
 	// Явная копия — не мутируем исходный slice через append
 	userIDs := make([]uuid.UUID, len(friendIDs)+1)
 	copy(userIDs, friendIDs)
-	userIDs[len(friendIDs)] = authorID // автор видит свои посты
 
 	if err = c.feedRepo.InsertBatch(ctx, postID, userIDs, insertedAt); err != nil {
 		return fmt.Errorf("feed insert batch post=%s: %w", postID, err)
@@ -239,16 +238,20 @@ func (c *FeedConsumer) handleFriendshipCreated(ctx context.Context, payload json
 		User1ID      string `json:"user1_id"`
 		User2ID      string `json:"user2_id"`
 	}
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid friendship.created payload, skipping")
 		return nil
 	}
 
 	user1, err := uuid.Parse(p.User1ID)
+
 	if err != nil {
 		return nil
 	}
+
 	user2, err := uuid.Parse(p.User2ID)
+
 	if err != nil {
 		return nil
 	}
@@ -256,6 +259,7 @@ func (c *FeedConsumer) handleFriendshipCreated(ctx context.Context, payload json
 	if err = c.backfillFeed(ctx, user1, user2); err != nil {
 		return err
 	}
+
 	return c.backfillFeed(ctx, user2, user1)
 }
 
@@ -264,6 +268,7 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 		UserID   string `json:"user_id"`
 		FriendID string `json:"friend_id"`
 	}
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid friendship.deleted payload, skipping")
 		return nil
@@ -273,6 +278,7 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 	if err != nil {
 		return nil
 	}
+
 	friend, err := uuid.Parse(p.FriendID)
 	if err != nil {
 		return nil
@@ -282,6 +288,7 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 	if err = c.feedRepo.DeleteByAuthor(ctx, user, friend); err != nil {
 		return fmt.Errorf("delete friend posts from user feed: %w", err)
 	}
+
 	if err = c.feedRepo.DeleteByAuthor(ctx, friend, user); err != nil {
 		return fmt.Errorf("delete user posts from friend feed: %w", err)
 	}
@@ -293,6 +300,7 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 	}); err != nil {
 		c.log.Warn("notify friend_removed (user) failed", slog.Any("error", err))
 	}
+
 	if err = c.notifier.Publish(ctx, []uuid.UUID{friend}, realtime.FeedEvent{
 		Type:     realtime.EventFriendRemoved,
 		FriendID: p.UserID,
@@ -307,12 +315,15 @@ func (c *FeedConsumer) handleUserDeleted(ctx context.Context, payload json.RawMe
 	var p struct {
 		UserID string `json:"user_id"`
 	}
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid user.deleted payload, skipping")
+
 		return nil
 	}
 
 	userID, err := uuid.Parse(p.UserID)
+
 	if err != nil {
 		return nil
 	}
@@ -332,6 +343,7 @@ func (c *FeedConsumer) handleUserDeleted(ctx context.Context, payload json.RawMe
 
 func (c *FeedConsumer) backfillFeed(ctx context.Context, recipientID, authorID uuid.UUID) error {
 	posts, err := c.postRepo.GetByAuthor(ctx, authorID, 50, time.Now().Add(time.Hour), uuid.Max)
+
 	if err != nil {
 		return fmt.Errorf("backfill get posts author=%s: %w", authorID, err)
 	}

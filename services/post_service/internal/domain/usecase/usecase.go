@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -19,8 +18,6 @@ import (
 	"github.com/rockkley/pushpost/services/post_service/internal/repository"
 	"log/slog"
 )
-
-var _ = fmt.Sprintf
 
 const defaultLimit = 20
 
@@ -59,8 +56,7 @@ func (uc *PostUseCase) CreatePost(ctx context.Context, authorID uuid.UUID, conte
 		if err := tx.Posts().Create(ctx, post); err != nil {
 			return err
 		}
-
-		// post.CreatedAt проставлен через RETURNING
+		// post.CreatedAt проставлен через RETURNING в репозитории
 		payload, err := buildEnvelope(events.EventPostCreated, events.PostCreatedEvent{
 			PostID:    post.ID.String(),
 			AuthorID:  post.AuthorID.String(),
@@ -69,7 +65,6 @@ func (uc *PostUseCase) CreatePost(ctx context.Context, authorID uuid.UUID, conte
 		if err != nil {
 			return err
 		}
-
 		return tx.Outbox().Insert(ctx, &outbox.OutboxEvent{
 			ID:            uuid.New(),
 			AggregateID:   post.ID.String(),
@@ -98,17 +93,12 @@ func (uc *PostUseCase) UpdatePost(ctx context.Context, postID, authorID uuid.UUI
 		return nil, apperr.ContentTooLong()
 	}
 
-	post := &entity.Post{
-		ID:       postID,
-		AuthorID: authorID,
-		Content:  content,
-	}
+	post := &entity.Post{ID: postID, AuthorID: authorID, Content: content}
 
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Posts().Update(ctx, post); err != nil {
 			return err
 		}
-
 		payload, err := buildEnvelope(events.EventPostUpdated, events.PostUpdatedEvent{
 			PostID:  post.ID.String(),
 			Version: post.Version,
@@ -116,7 +106,6 @@ func (uc *PostUseCase) UpdatePost(ctx context.Context, postID, authorID uuid.UUI
 		if err != nil {
 			return err
 		}
-
 		return tx.Outbox().Insert(ctx, &outbox.OutboxEvent{
 			ID:            uuid.New(),
 			AggregateID:   post.ID.String(),
@@ -129,10 +118,7 @@ func (uc *PostUseCase) UpdatePost(ctx context.Context, postID, authorID uuid.UUI
 		return nil, err
 	}
 
-	log.Info("post updated",
-		slog.String("post_id", post.ID.String()),
-		slog.Int("version", post.Version),
-	)
+	log.Info("post updated", slog.String("post_id", post.ID.String()), slog.Int("version", post.Version))
 	return post, nil
 }
 
@@ -140,54 +126,49 @@ func (uc *PostUseCase) GetFeed(ctx context.Context, userID uuid.UUID, limit int,
 	if limit <= 0 || limit > 100 {
 		limit = defaultLimit
 	}
-
 	before, beforeID, err := uc.decodeCursor(cursorToken)
 	if err != nil {
 		return domain.FeedResponse{}, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid cursor")
 	}
-
 	posts, err := uc.feedRepo.GetFeed(ctx, userID, limit, before, beforeID)
 	if err != nil {
 		return domain.FeedResponse{}, err
 	}
-
-	return uc.buildFeedResponse(posts, limit)
+	return uc.buildFeedResponse(posts, limit), nil
 }
 
 func (uc *PostUseCase) GetFeedSince(ctx context.Context, userID uuid.UUID, limit int, sinceToken string) (domain.FeedResponse, error) {
 	if limit <= 0 || limit > 100 {
 		limit = defaultLimit
 	}
-
 	after, afterID, err := uc.decodeCursor(sinceToken)
 	if err != nil {
 		return domain.FeedResponse{}, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid since cursor")
 	}
-
 	posts, err := uc.feedRepo.GetFeedSince(ctx, userID, limit, after, afterID)
 	if err != nil {
 		return domain.FeedResponse{}, err
 	}
-
-	return uc.buildFeedResponse(posts, limit)
+	return uc.buildFeedResponse(posts, limit), nil
 }
 
 func (uc *PostUseCase) GetUserPosts(ctx context.Context, authorID uuid.UUID, limit int, cursorToken string) (domain.FeedResponse, error) {
 	if limit <= 0 || limit > 100 {
 		limit = defaultLimit
 	}
-
 	before, beforeID, err := uc.decodeCursor(cursorToken)
 	if err != nil {
 		return domain.FeedResponse{}, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid cursor")
 	}
-
 	posts, err := uc.uow.Reader().GetByAuthor(ctx, authorID, limit, before, beforeID)
 	if err != nil {
 		return domain.FeedResponse{}, err
 	}
-
-	return uc.buildFeedResponse(posts, limit)
+	// GetByAuthor возвращает посты без InsertedAt — используем CreatedAt для курсора
+	for _, p := range posts {
+		p.InsertedAt = p.CreatedAt
+	}
+	return uc.buildFeedResponse(posts, limit), nil
 }
 
 func (uc *PostUseCase) DeletePost(ctx context.Context, postID, authorID uuid.UUID) error {
@@ -253,23 +234,28 @@ func (uc *PostUseCase) encodeCursor(ts time.Time, id uuid.UUID) string {
 	return token
 }
 
-func (uc *PostUseCase) buildFeedResponse(posts []*entity.Post, limit int) (domain.FeedResponse, error) {
+// buildFeedResponse строит ответ с курсорами.
+// Курсор основан на InsertedAt — времени вставки в ленту, а не создания поста.
+// Это обеспечивает стабильный порядок: даже если друг загрузил старый пост,
+// он появится в ленте в хронологии добавления в feeds.
+func (uc *PostUseCase) buildFeedResponse(posts []*entity.Post, limit int) domain.FeedResponse {
+	if len(posts) == 0 {
+		return domain.FeedResponse{}
+	}
+
 	resp := domain.FeedResponse{Posts: posts}
 
-	if len(posts) == 0 {
-		return resp, nil
-	}
+	// top_cursor — самый новый пост (первый в результате DESC)
+	// Используется для GetFeedSince / reconciliation
+	resp.TopCursor = uc.encodeCursor(posts[0].InsertedAt, posts[0].ID)
 
-	// top_cursor — курсор самого нового поста (первого в результате)
-	resp.TopCursor = uc.encodeCursor(posts[0].CreatedAt, posts[0].ID)
-
-	// next_cursor — только если есть ещё посты (получили limit штук)
+	// next_cursor — только если получили ровно limit записей (есть ещё страницы)
 	if len(posts) == limit {
 		last := posts[len(posts)-1]
-		resp.NextCursor = uc.encodeCursor(last.CreatedAt, last.ID)
+		resp.NextCursor = uc.encodeCursor(last.InsertedAt, last.ID)
 	}
 
-	return resp, nil
+	return resp
 }
 
 func buildEnvelope(eventType string, payload any) ([]byte, error) {

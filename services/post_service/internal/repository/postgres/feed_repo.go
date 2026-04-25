@@ -65,7 +65,7 @@ func (r *FeedRepository) GetFeed(
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
 	const query = `
-		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at
+		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at,f.inserted_at
 		FROM feeds f
 		JOIN posts p ON p.id = f.post_id
 		WHERE f.user_id = $1
@@ -75,9 +75,11 @@ func (r *FeedRepository) GetFeed(
 		LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, userID, before, beforeID, limit)
+
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "get feed")
 	}
+
 	defer rows.Close()
 
 	return scanFeedPosts(rows)
@@ -93,7 +95,7 @@ func (r *FeedRepository) GetFeedSince(
 	// Возвращает посты НОВЕЕ курсора (для reconciliation / refresh)
 	// Сортировка ASC — потом разворачиваем на уровне usecase
 	const query = `
-		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at
+		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at, f.inserted_at
 		FROM feeds f
 		JOIN posts p ON p.id = f.post_id
 		WHERE f.user_id = $1
@@ -103,12 +105,14 @@ func (r *FeedRepository) GetFeedSince(
 		LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, userID, after, afterID, limit)
+
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "get feed since")
 	}
 	defer rows.Close()
 
 	posts, err := scanFeedPosts(rows)
+
 	if err != nil {
 		return nil, err
 	}
@@ -188,6 +192,7 @@ func scanFeedPosts(rows *sql.Rows) ([]*entity.Post, error) {
 		if err := rows.Scan(
 			&p.ID, &p.AuthorID, &p.Content, &p.Version,
 			&p.CreatedAt, &p.UpdatedAt,
+			&p.InsertedAt,
 		); err != nil {
 			return nil, err
 		}
