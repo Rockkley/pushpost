@@ -216,6 +216,18 @@ func (uc *PostUseCase) GetPostsByIDs(ctx context.Context, ids []uuid.UUID) ([]*e
 	return uc.uow.Reader().GetByIDs(ctx, ids)
 }
 
+func (uc *PostUseCase) LikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error) {
+	return uc.uow.Reader().SetVote(ctx, postID, userID, 1)
+}
+
+func (uc *PostUseCase) DislikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error) {
+	return uc.uow.Reader().SetVote(ctx, postID, userID, -1)
+}
+
+func (uc *PostUseCase) RemovePostVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error) {
+	return uc.uow.Reader().RemoveVote(ctx, postID, userID)
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────────
 
 func (uc *PostUseCase) decodeCursor(token string) (time.Time, uuid.UUID, error) {

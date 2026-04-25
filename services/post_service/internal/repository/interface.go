@@ -16,6 +16,8 @@ type PostRepositoryInterface interface {
 	GetByAuthor(ctx context.Context, authorID uuid.UUID, limit int, before time.Time, beforeID uuid.UUID) ([]*entity.Post, error)
 	Update(ctx context.Context, post *entity.Post) error
 	SoftDelete(ctx context.Context, postID, authorID uuid.UUID) error
+	SetVote(ctx context.Context, postID, userID uuid.UUID, value int) (*entity.Post, error)
+	RemoveVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
 }
 
 type FeedRepository interface {

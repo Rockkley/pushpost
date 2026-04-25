@@ -41,6 +41,9 @@ type PostUseCaseInterface interface {
 	DeletePost(ctx context.Context, postID, authorID uuid.UUID) error
 	GetPostByID(ctx context.Context, postID uuid.UUID) (*entity.Post, error)
 	GetPostsByIDs(ctx context.Context, ids []uuid.UUID) ([]*entity.Post, error)
+	LikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
+	DislikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
+	RemovePostVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
 }
 
 type Cursor struct {

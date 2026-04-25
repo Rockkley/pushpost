@@ -65,7 +65,9 @@ func (r *FeedRepository) GetFeed(
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
 	const query = `
-		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at,f.inserted_at
+		SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
+		       p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
+
 		FROM feeds f
 		JOIN posts p ON p.id = f.post_id
 		WHERE f.user_id = $1
@@ -95,7 +97,9 @@ func (r *FeedRepository) GetFeedSince(
 	// Возвращает посты НОВЕЕ курсора (для reconciliation / refresh)
 	// Сортировка ASC — потом разворачиваем на уровне usecase
 	const query = `
-		SELECT p.id, p.author_id, p.content, p.version, p.created_at, p.updated_at, f.inserted_at
+		SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
+		       p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
+
 		FROM feeds f
 		JOIN posts p ON p.id = f.post_id
 		WHERE f.user_id = $1
@@ -191,6 +195,7 @@ func scanFeedPosts(rows *sql.Rows) ([]*entity.Post, error) {
 		var p entity.Post
 		if err := rows.Scan(
 			&p.ID, &p.AuthorID, &p.Content, &p.Version,
+			&p.LikesCount, &p.DislikesCount, &p.Rating,
 			&p.CreatedAt, &p.UpdatedAt,
 			&p.InsertedAt,
 		); err != nil {

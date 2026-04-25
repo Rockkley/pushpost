@@ -38,12 +38,16 @@ func (r *PostRepository) Create(ctx context.Context, post *entity.Post) error {
 
 func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Post, error) {
 	const query = `
-		SELECT id, author_id, content, version, created_at, updated_at, deleted_at
+		SELECT id, author_id, content, version, likes_count, dislikes_count,
+		       likes_count - dislikes_count AS rating,
+		       created_at, updated_at, deleted_at
+
 		FROM posts WHERE id = $1`
 
 	var p entity.Post
 	err := r.exec.QueryRowContext(ctx, query, id).Scan(
 		&p.ID, &p.AuthorID, &p.Content, &p.Version,
+		&p.LikesCount, &p.DislikesCount, &p.Rating,
 		&p.CreatedAt, &p.UpdatedAt, &p.DeletedAt,
 	)
 	if err != nil {
@@ -61,7 +65,9 @@ func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*enti
 	}
 
 	const query = `
-		SELECT id, author_id, content, version, created_at, updated_at
+		SELECT id, author_id, content, version, likes_count, dislikes_count,
+		       likes_count - dislikes_count AS rating, created_at, updated_at
+
 		FROM posts
 		WHERE id = ANY($1::uuid[])
 		  AND deleted_at IS NULL`
@@ -108,7 +114,8 @@ func (r *PostRepository) GetByAuthors(
 	}
 
 	const query = `
-		SELECT id, author_id, content, version, created_at, updated_at
+		SELECT id, author_id, content, version, likes_count, dislikes_count,
+		       likes_count - dislikes_count AS rating, created_at, updated_at
 		FROM posts
 		WHERE author_id = ANY($1::uuid[])
 		  AND deleted_at IS NULL
@@ -133,7 +140,8 @@ func (r *PostRepository) GetByAuthor(
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
 	const query = `
-		SELECT id, author_id, content, version, created_at, updated_at
+		SELECT id, author_id, content, version, likes_count, dislikes_count,
+		       likes_count - dislikes_count AS rating, created_at, updated_at
 		FROM posts
 		WHERE author_id = $1
 		  AND deleted_at IS NULL
@@ -148,6 +156,95 @@ func (r *PostRepository) GetByAuthor(
 	defer rows.Close()
 
 	return scanPosts(rows)
+}
+
+func (r *PostRepository) SetVote(ctx context.Context, postID, userID uuid.UUID, value int) (*entity.Post, error) {
+	const query = `
+		WITH target AS (
+			SELECT id FROM posts WHERE id = $1 AND deleted_at IS NULL
+		),
+		existing AS (
+			SELECT pv.value
+			FROM post_votes pv
+			JOIN target t ON t.id = pv.post_id
+			WHERE pv.user_id = $2
+		),
+		upsert AS (
+			INSERT INTO post_votes (post_id, user_id, value)
+			SELECT t.id, $2, $3 FROM target t
+			ON CONFLICT (post_id, user_id) DO UPDATE SET value = EXCLUDED.value
+			RETURNING value
+		),
+		delta AS (
+			SELECT COALESCE((SELECT value FROM existing), 0) AS old_value,
+			       COALESCE((SELECT value FROM upsert), 0) AS new_value
+		)
+		UPDATE posts p
+		SET likes_count = p.likes_count
+			+ CASE WHEN (SELECT old_value FROM delta) = 1 THEN -1 ELSE 0 END
+			+ CASE WHEN (SELECT new_value FROM delta) = 1 THEN 1 ELSE 0 END,
+		    dislikes_count = p.dislikes_count
+			+ CASE WHEN (SELECT old_value FROM delta) = -1 THEN -1 ELSE 0 END
+			+ CASE WHEN (SELECT new_value FROM delta) = -1 THEN 1 ELSE 0 END
+		WHERE p.id IN (SELECT id FROM target)
+		RETURNING p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
+		          p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at`
+
+	var post entity.Post
+	err := r.exec.QueryRowContext(ctx, query, postID, userID, value).Scan(
+		&post.ID, &post.AuthorID, &post.Content, &post.Version,
+		&post.LikesCount, &post.DislikesCount, &post.Rating,
+		&post.CreatedAt, &post.UpdatedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.PostNotFound()
+		}
+		return nil, commonapperr.MapPostgresError(err, "set post vote")
+	}
+	return &post, nil
+}
+
+func (r *PostRepository) RemoveVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error) {
+	const query = `
+		WITH target AS (
+			SELECT id FROM posts WHERE id = $1 AND deleted_at IS NULL
+		),
+		removed AS (
+			DELETE FROM post_votes pv
+			USING target t
+			WHERE pv.post_id = t.id
+			  AND pv.user_id = $2
+			RETURNING pv.value
+		),
+		delta AS (
+			SELECT COALESCE((SELECT value FROM removed), 0) AS old_value
+		)
+		UPDATE posts p
+		SET likes_count = p.likes_count
+			+ CASE WHEN (SELECT old_value FROM delta) = 1 THEN -1 ELSE 0 END,
+		    dislikes_count = p.dislikes_count
+			+ CASE WHEN (SELECT old_value FROM delta) = -1 THEN -1 ELSE 0 END
+		WHERE p.id IN (SELECT id FROM target)
+		RETURNING p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
+		          p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at`
+
+	var post entity.Post
+	err := r.exec.QueryRowContext(ctx, query, postID, userID).Scan(
+		&post.ID, &post.AuthorID, &post.Content, &post.Version,
+		&post.LikesCount, &post.DislikesCount, &post.Rating,
+		&post.CreatedAt, &post.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, apperror.PostNotFound()
+		}
+
+		return nil, commonapperr.MapPostgresError(err, "remove post vote")
+	}
+
+	return &post, nil
 }
 
 func (r *PostRepository) SoftDelete(ctx context.Context, postID, authorID uuid.UUID) error {
@@ -175,6 +272,7 @@ func scanPosts(rows *sql.Rows) ([]*entity.Post, error) {
 		var p entity.Post
 		if err := rows.Scan(
 			&p.ID, &p.AuthorID, &p.Content, &p.Version,
+			&p.LikesCount, &p.DislikesCount, &p.Rating,
 			&p.CreatedAt, &p.UpdatedAt,
 		); err != nil {
 			return nil, err

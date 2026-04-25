@@ -37,6 +37,10 @@ func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedS
 			r.Get("/{postID}", handlerhttp.MakeHandler(h.GetPostByID))
 			r.Patch("/{postID}", handlerhttp.MakeHandler(h.UpdatePost))
 			r.Delete("/{postID}", handlerhttp.MakeHandler(h.DeletePost))
+			r.Put("/{postID}/like", handlerhttp.MakeHandler(h.LikePost))
+			r.Put("/{postID}/dislike", handlerhttp.MakeHandler(h.DislikePost))
+			r.Delete("/{postID}/vote", handlerhttp.MakeHandler(h.RemoveVote))
+
 		})
 	})
 

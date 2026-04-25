@@ -2,13 +2,16 @@
 -- +goose StatementBegin
 CREATE TABLE posts
 (
-    id         UUID        PRIMARY KEY,
-    author_id  UUID        NOT NULL,
-    content    TEXT        NOT NULL,
-    version    INT         NOT NULL DEFAULT 1,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    deleted_at TIMESTAMPTZ,
+    id             UUID        PRIMARY KEY,
+    author_id      UUID        NOT NULL,
+    content        TEXT        NOT NULL,
+    version        INT         NOT NULL DEFAULT 1,
+    likes_count    INT         NOT NULL DEFAULT 0,
+    dislikes_count INT         NOT NULL DEFAULT 0,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    deleted_at     TIMESTAMPTZ,
+
 
     CONSTRAINT post_content_not_empty  CHECK (char_length(content) >= 1),
     CONSTRAINT post_content_max_length CHECK (char_length(content) <= 5000)
