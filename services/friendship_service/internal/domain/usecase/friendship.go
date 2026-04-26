@@ -276,20 +276,28 @@ func (uc *FriendshipUseCase) GetIncomingRequests(
 	return uc.uow.Requests().GetIncoming(ctx, userID)
 }
 
-func marshalPayload(v any) ([]byte, error) {
-	b, err := json.Marshal(v)
+func marshalEnvelope(eventType string, payload any) ([]byte, error) {
+	inner, err := json.Marshal(payload)
 	if err != nil {
 		return nil, commonapperr.Internal("marshal outbox payload", err)
 	}
-	return b, nil
+	type envelope struct {
+		EventType string          `json:"event_type"`
+		Payload   json.RawMessage `json:"payload"`
+	}
+
+	wrapped, err := json.Marshal(envelope{EventType: eventType, Payload: inner})
+
+	if err != nil {
+		return nil, commonapperr.Internal("marshal outbox envelope", err)
+	}
+
+	return wrapped, nil
 }
 
 func insertOutboxEvent(ctx context.Context, tx domain.Tx, aggregateID, aggregateType, eventType string, payload any) error {
-	b, err := marshalPayload(payload)
-	slog.Debug("insertOutboxEvent")
-
+	b, err := marshalEnvelope(eventType, payload)
 	if err != nil {
-
 		return err
 	}
 

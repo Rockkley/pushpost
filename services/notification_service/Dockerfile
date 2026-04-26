@@ -15,7 +15,7 @@ WORKDIR /service
 
 COPY --from=builder /out/notification-service /usr/local/bin/notification-service
 
-EXPOSE 8084
+EXPOSE 8086
 
 
 ENTRYPOINT ["/usr/local/bin/notification-service"]

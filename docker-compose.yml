@@ -128,6 +128,21 @@ services:
       friendship-service:
         condition: service_started
 
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification_service/Dockerfile
+    env_file: services/notification_service/.env
+    expose:
+      - "8086"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+
   api-gateway:
     build:
       context: .
@@ -141,7 +156,7 @@ services:
       - friendship-service
       - profile-service
       - message-service
-
+      - notification-service
 volumes:
   postgres_data:
   kafka_data:

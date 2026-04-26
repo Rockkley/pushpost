@@ -15,12 +15,13 @@ import (
 )
 
 type Proxies struct {
-	Auth       *httputil.ReverseProxy
-	User       *httputil.ReverseProxy
-	Friendship *httputil.ReverseProxy
-	Message    *httputil.ReverseProxy
-	Post       *httputil.ReverseProxy
-	Profile    *httputil.ReverseProxy
+	Auth         *httputil.ReverseProxy
+	User         *httputil.ReverseProxy
+	Friendship   *httputil.ReverseProxy
+	Message      *httputil.ReverseProxy
+	Post         *httputil.ReverseProxy
+	Profile      *httputil.ReverseProxy
+	Notification *httputil.ReverseProxy
 }
 
 func RewriteUsernameToPath(path string) string {
@@ -63,6 +64,8 @@ func NewRouter(
 		r.Handle("/posts/*", http.HandlerFunc(p.Post.ServeHTTP))
 		r.Handle("/profiles", http.HandlerFunc(p.Profile.ServeHTTP))
 		r.Handle("/profiles/*", http.HandlerFunc(p.Profile.ServeHTTP))
+		r.Handle("/notifications", http.HandlerFunc(p.Notification.ServeHTTP))
+		r.Handle("/notifications/*", http.HandlerFunc(p.Notification.ServeHTTP))
 
 	})
 

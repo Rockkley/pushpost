@@ -84,6 +84,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	notificationProxy, err := proxy.NewStrippingAuth(cfg.Services.NotificationService, timeout)
+
+	if err != nil {
+		appLog.Error("failed to create notification proxy", slog.Any("error", err))
+		os.Exit(1)
+	}
+
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
 
 	if err != nil {
@@ -106,12 +113,13 @@ func main() {
 	profileHandler := myHTTP.NewProfileHandler(profileClient, friendshipClient)
 
 	mux := transport.NewRouter(appLog, authMW, transport.Proxies{
-		Auth:       authProxy,
-		User:       userProxy,
-		Friendship: friendshipProxy,
-		Message:    messageProxy,
-		Post:       postProxy,
-		Profile:    profileProxy,
+		Auth:         authProxy,
+		User:         userProxy,
+		Friendship:   friendshipProxy,
+		Message:      messageProxy,
+		Post:         postProxy,
+		Profile:      profileProxy,
+		Notification: notificationProxy,
 	}, *profileHandler)
 
 	srv := &http.Server{

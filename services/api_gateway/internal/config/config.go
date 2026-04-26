@@ -25,22 +25,25 @@ type JWTConfig struct {
 }
 
 type ServicesConfig struct {
-	AuthService        string        `env:"AUTH_SERVICE_URL"          env-required:"true"`
-	UserService        string        `env:"USER_SERVICE_URL"          env-required:"true"`
-	FriendshipService  string        `env:"FRIENDSHIP_SERVICE_URL"    env-required:"true"`
-	ProfileServiceGRPC string        `env:"PROFILE_SERVICE_GRPC_ADDR" env-required:"true"`
-	ProfileService     string        `env:"PROFILE_SERVICE_URL"       env-required:"true"`
-	MessageService     string        `env:"MESSAGE_SERVICE_URL"     env-required:"true"`
-	PostService        string        `env:"POST_SERVICE_URL"          env-required:"true"`
-	Timeout            time.Duration `env:"UPSTREAM_TIMEOUT"          env-default:"10s"`
+	AuthService         string        `env:"AUTH_SERVICE_URL"          env-required:"true"`
+	UserService         string        `env:"USER_SERVICE_URL"          env-required:"true"`
+	FriendshipService   string        `env:"FRIENDSHIP_SERVICE_URL"    env-required:"true"`
+	ProfileServiceGRPC  string        `env:"PROFILE_SERVICE_GRPC_ADDR" env-required:"true"`
+	ProfileService      string        `env:"PROFILE_SERVICE_URL"       env-required:"true"`
+	MessageService      string        `env:"MESSAGE_SERVICE_URL"     env-required:"true"`
+	PostService         string        `env:"POST_SERVICE_URL"          env-required:"true"`
+	NotificationService string        `env:"NOTIFICATION_SERVICE_URL"  env-required:"true"`
+	Timeout             time.Duration `env:"UPSTREAM_TIMEOUT"          env-default:"10s"`
 }
 
 func Load() (*Config, error) {
 	var cfg Config
+
 	if err := cleanenv.ReadEnv(&cfg); err != nil {
 
 		return nil, fmt.Errorf("config: %w", err)
 	}
+
 	if err := cfg.validate(); err != nil {
 
 		return nil, fmt.Errorf("config: validation: %w", err)
@@ -51,7 +54,6 @@ func Load() (*Config, error) {
 
 func (c *Config) validate() error {
 	if len(c.JWT.Secret) < 32 {
-
 		return fmt.Errorf("jwt_secret must be at least 32 characters, got %d", len(c.JWT.Secret))
 	}
 
