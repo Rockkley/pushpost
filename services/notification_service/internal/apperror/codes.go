@@ -7,4 +7,5 @@ const (
 	CodeTypeRequired          = "type_required"
 	CodeChannelRequired       = "channel_required"
 	CodeMissingUserID         = "missing_user_id"
+	CodeNotificationNotFound  = "notification_not_found"
 )

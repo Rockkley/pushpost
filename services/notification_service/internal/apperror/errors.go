@@ -25,3 +25,7 @@ func ChannelRequired() commonapperr.AppError {
 func MissingUserID() commonapperr.AppError {
 	return commonapperr.Unauthorized(CodeMissingUserID, "missing authenticated user")
 }
+
+func NotificationNotFound() commonapperr.AppError {
+	return commonapperr.NotFound(CodeNotificationNotFound, "notification not found")
+}
