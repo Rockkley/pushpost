@@ -2,9 +2,6 @@ package http
 
 import (
 	"encoding/json"
-	"net/http"
-	"strconv"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
@@ -12,6 +9,8 @@ import (
 	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	"github.com/rockkley/pushpost/services/notification_service/internal/domain"
 	"github.com/rockkley/pushpost/services/notification_service/internal/entity"
+	"net/http"
+	"strconv"
 )
 
 type NotificationHandler struct{ uc domain.NotificationUseCase }
@@ -26,8 +25,11 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error
 		return err
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+	limit, offset, err := parsePagination(r)
+
+	if err != nil {
+		return err
+	}
 
 	notifications, err := h.uc.GetForUser(r.Context(), userID, limit, offset)
 	if err != nil {
@@ -205,4 +207,27 @@ func isValidNotificationType(t entity.NotificationType) bool {
 		return true
 	}
 	return false
+}
+
+func parsePagination(r *http.Request) (limit, offset int, err error) {
+	limit = 0
+	offset = 0
+
+	rawLimit := r.URL.Query().Get("limit")
+	if rawLimit != "" {
+		limit, err = strconv.Atoi(rawLimit)
+		if err != nil {
+			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid limit — must be an integer")
+		}
+	}
+
+	rawOffset := r.URL.Query().Get("offset")
+	if rawOffset != "" {
+		offset, err = strconv.Atoi(rawOffset)
+		if err != nil {
+			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid offset — must be an integer")
+		}
+	}
+
+	return limit, offset, nil
 }

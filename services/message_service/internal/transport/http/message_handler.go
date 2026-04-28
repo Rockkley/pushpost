@@ -79,7 +79,12 @@ func (h *MessageHandler) GetConversation(w http.ResponseWriter, r *http.Request)
 		return err
 	}
 
-	limit, offset := parsePagination(r)
+	limit, offset, err := parsePagination(r)
+
+	if err != nil {
+
+		return err
+	}
 
 	messages, err := h.uc.GetConversation(r.Context(), dto.GetConversationDTO{
 		UserID:      userID,
@@ -217,9 +222,29 @@ func parsePathUUID(r *http.Request, param string) (uuid.UUID, error) {
 	return id, nil
 }
 
-func parsePagination(r *http.Request) (limit, offset int) {
-	limit, _ = strconv.Atoi(r.URL.Query().Get("limit"))
-	offset, _ = strconv.Atoi(r.URL.Query().Get("offset"))
+func parsePagination(r *http.Request) (limit, offset int, err error) {
+	limit = 0
+	offset = 0
 
-	return
+	rawLimit := r.URL.Query().Get("limit")
+
+	if rawLimit != "" {
+		limit, err = strconv.Atoi(rawLimit)
+
+		if err != nil {
+			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid limit — must be an integer")
+		}
+	}
+
+	rawOffset := r.URL.Query().Get("offset")
+
+	if rawOffset != "" {
+		offset, err = strconv.Atoi(rawOffset)
+
+		if err != nil {
+			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid offset — must be an integer")
+		}
+	}
+
+	return limit, offset, nil
 }

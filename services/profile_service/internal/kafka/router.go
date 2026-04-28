@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/rockkley/pushpost/services/profile_service/internal/apperror"
 	"log/slog"
 
 	domain "github.com/rockkley/pushpost/services/profile_service/internal/domain/events"
@@ -25,13 +26,15 @@ func (r *Router) Route(ctx context.Context, env domain.Envelope) error {
 	switch env.EventType {
 	case domain.EventUserCreated:
 		var evt domain.UserCreatedEvent
+
 		if err := json.Unmarshal(env.Payload, &evt); err != nil {
-			return fmt.Errorf("decode user.created: %w", err)
+			return apperror.InvalidErrorEnvelope(fmt.Errorf("decode user.created: %w", err))
 		}
+
 		return r.userCreatedHandler.Handle(ctx, evt)
 
 	default:
 		r.log.Warn("unhandled event", slog.String("event_type", env.EventType))
-		return nil
+		return apperror.InvalidEventType(fmt.Errorf("unsupported event type: %s", env.EventType))
 	}
 }

@@ -88,13 +88,17 @@ func (h *PostHandler) GetFeed(w http.ResponseWriter, r *http.Request) error {
 		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	limit, err := parseOptionalIntQuery(r, "limit")
+
+	if err != nil {
+		return err
+	}
+
 	cursorToken := r.URL.Query().Get("cursor")
 	sinceToken := r.URL.Query().Get("since")
 
 	var (
 		resp domain.FeedResponse
-		err  error
 	)
 
 	if sinceToken != "" {
@@ -102,11 +106,13 @@ func (h *PostHandler) GetFeed(w http.ResponseWriter, r *http.Request) error {
 	} else {
 		resp, err = h.uc.GetFeed(r.Context(), userID, limit, cursorToken)
 	}
+
 	if err != nil {
 		return err
 	}
 
 	posts := resp.Posts
+
 	if posts == nil {
 		posts = []*entity.Post{}
 	}
@@ -124,7 +130,12 @@ func (h *PostHandler) GetUserPosts(w http.ResponseWriter, r *http.Request) error
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid user id")
 	}
 
-	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	limit, err := parseOptionalIntQuery(r, "limit")
+
+	if err != nil {
+		return err
+	}
+
 	cursorToken := r.URL.Query().Get("cursor")
 
 	resp, err := h.uc.GetUserPosts(r.Context(), authorID, limit, cursorToken)
@@ -260,4 +271,18 @@ func (h *PostHandler) RemoveVote(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, post)
+}
+
+func parseOptionalIntQuery(r *http.Request, key string) (int, error) {
+	raw := r.URL.Query().Get(key)
+	if raw == "" {
+		return 0, nil
+	}
+
+	value, err := strconv.Atoi(raw)
+	if err != nil {
+		return 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid "+key+" — must be an integer")
+	}
+
+	return value, nil
 }
