@@ -56,19 +56,26 @@ func (h *Handlers) HandleFriendRequestSent(ctx context.Context, payload json.Raw
 
 func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.RawMessage) error {
 	var p domain.FriendshipCreatedPayload
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("decode friendship.created: %w", err)
 	}
+
 	user1ID, err := uuid.Parse(p.User1ID)
+
 	if err != nil {
 		h.log.Warn("invalid user1_id in friendship.created, skipping",
 			slog.String("user1_id", p.User1ID))
+
 		return nil
 	}
+
 	user2ID, err := uuid.Parse(p.User2ID)
+
 	if err != nil {
 		h.log.Warn("invalid user2_id in friendship.created, skipping",
 			slog.String("user2_id", p.User2ID))
+
 		return nil
 	}
 
@@ -76,6 +83,7 @@ func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.Raw
 	// Суффикс ":user1" / ":user2" разделяет их внутри одного события.
 	// Оба идемпотентны: при ретрае один из них уже может существовать —
 	// ON CONFLICT DO NOTHING тихо пропустит его, второй будет создан.
+
 	notif1 := &entity.Notification{
 		ID:     notifID("friendship.created:" + p.FriendshipID + ":user1"),
 		UserID: user1ID,
@@ -84,6 +92,7 @@ func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.Raw
 		Body:   "Вы теперь друзья!",
 		Data:   map[string]string{"friendship_id": p.FriendshipID},
 	}
+
 	notif2 := &entity.Notification{
 		ID:     notifID("friendship.created:" + p.FriendshipID + ":user2"),
 		UserID: user2ID,
@@ -96,6 +105,7 @@ func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.Raw
 	if err = h.uc.CreateAndDeliver(ctx, notif1); err != nil {
 		return err
 	}
+
 	return h.uc.CreateAndDeliver(ctx, notif2)
 }
 
@@ -131,12 +141,16 @@ func (h *Handlers) HandleMessageSent(ctx context.Context, payload json.RawMessag
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("decode message.sent: %w", err)
 	}
+
 	receiverID, err := uuid.Parse(p.ReceiverID)
+
 	if err != nil {
 		h.log.Warn("invalid receiver_id in message.sent, skipping",
 			slog.String("receiver_id", p.ReceiverID))
+
 		return nil
 	}
+
 	return h.uc.CreateAndDeliver(ctx, &entity.Notification{
 		ID:     notifID("message.received:" + p.MessageID),
 		UserID: receiverID,
