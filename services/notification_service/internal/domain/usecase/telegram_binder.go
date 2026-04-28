@@ -18,14 +18,23 @@ import (
 
 const linkCodeTTL = 10 * time.Minute
 
+// TelegramBinder реализует domain.TelegramLinker.
 type TelegramBinder struct {
 	linkStore    repository.LinkCodeStore
 	telegramRepo repository.TelegramRepository
 	log          *slog.Logger
 }
 
-func NewTelegramBinder(linkStore repository.LinkCodeStore, telegramRepo repository.TelegramRepository, log *slog.Logger) *TelegramBinder {
-	return &TelegramBinder{linkStore: linkStore, telegramRepo: telegramRepo, log: log.With("component", "telegram_binder")}
+func NewTelegramBinder(
+	linkStore repository.LinkCodeStore,
+	telegramRepo repository.TelegramRepository,
+	log *slog.Logger,
+) *TelegramBinder {
+	return &TelegramBinder{
+		linkStore:    linkStore,
+		telegramRepo: telegramRepo,
+		log:          log.With("component", "telegram_binder"),
+	}
 }
 
 func (b *TelegramBinder) GenerateTelegramLinkCode(ctx context.Context, userID uuid.UUID) (string, error) {
@@ -41,17 +50,27 @@ func (b *TelegramBinder) GenerateTelegramLinkCode(ctx context.Context, userID uu
 
 func (b *TelegramBinder) BindTelegram(ctx context.Context, code string, chatID int64, username string) error {
 	log := ctxlog.From(ctx).With(slog.String("op", "TelegramBinder.BindTelegram"))
+
 	if code == "" {
 		return apperr.InvalidTelegramCode()
 	}
+
 	userID, err := b.linkStore.Pop(ctx, code)
 	if err != nil {
-		log.Warn("invalid or expired link code", slog.String("code", code))
+		// Код не логируем: это секретный одноразовый токен.
+		log.Warn("invalid or expired link code")
 		return apperr.InvalidTelegramCode()
 	}
-	if err = b.telegramRepo.Upsert(ctx, &entity.TelegramBinding{UserID: userID, ChatID: chatID, Username: username}); err != nil {
+
+	if err = b.telegramRepo.Upsert(ctx, &entity.TelegramBinding{
+		UserID:   userID,
+		ChatID:   chatID,
+		Username: username,
+	}); err != nil {
 		return err
 	}
+
+	log.Info("telegram account bound", slog.String("user_id", userID.String()))
 	return nil
 }
 

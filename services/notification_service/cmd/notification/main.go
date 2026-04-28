@@ -27,13 +27,6 @@ import (
 	myHTTP "github.com/rockkley/pushpost/services/notification_service/internal/transport/http"
 )
 
-var consumedTopics = []string{
-	"friendship_request.sent",
-	"friendship.created",
-	"friendship_request.rejected",
-	"message.sent",
-}
-
 func main() {
 	envFile := os.Getenv("ENV_FILE")
 	if envFile == "" {
@@ -51,14 +44,22 @@ func main() {
 	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
 	slog.SetDefault(appLog)
 
-	db, err := database.Connect(database.Config{URL: cfg.Database.URL, MaxOpenConns: cfg.Database.MaxOpenConns, MaxIdleConns: cfg.Database.MaxIdleConns})
+	db, err := database.Connect(database.Config{
+		URL:          cfg.Database.URL,
+		MaxOpenConns: cfg.Database.MaxOpenConns,
+		MaxIdleConns: cfg.Database.MaxIdleConns,
+	})
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
 	defer db.Close()
 
-	rdb := goredis.NewClient(&goredis.Options{Addr: cfg.Redis.Addr, Password: cfg.Redis.Password, DB: cfg.Redis.DB})
+	rdb := goredis.NewClient(&goredis.Options{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to redis", slog.Any("error", err))
 		os.Exit(1)
@@ -87,16 +88,31 @@ func main() {
 
 	handlers := notifkafka.NewHandlers(uc, appLog)
 	router := notifkafka.NewRouter(handlers, appLog)
-	consumer := notifkafka.NewConsumer(cfg.Kafka.Brokers(), cfg.Kafka.GroupID, consumedTopics, router, appLog)
+
+	// notifkafka.ConsumedTopics — единственный источник правды для списка топиков.
+	// Не дублируем список здесь, чтобы не допустить рассинхронизации с router.
+	consumer := notifkafka.NewConsumer(
+		cfg.Kafka.Brokers(),
+		cfg.Kafka.GroupID,
+		notifkafka.ConsumedTopics,
+		router,
+		appLog,
+	)
 
 	handler := myHTTP.NewNotificationHandler(uc)
 	sseHandler := myHTTP.NewSSEHandler(rdb)
 	mux := transport.NewRouter(appLog, handler, sseHandler)
 
-	srv := &http.Server{Addr: fmt.Sprintf(":%s", cfg.HTTP.Port), Handler: mux, ReadTimeout: cfg.HTTP.ReadTimeout, WriteTimeout: cfg.HTTP.WriteTimeout}
+	srv := &http.Server{
+		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),
+		Handler:      mux,
+		ReadTimeout:  cfg.HTTP.ReadTimeout,
+		WriteTimeout: cfg.HTTP.WriteTimeout,
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
 	serverErr := make(chan error, 2)
 
 	go func() {
@@ -104,6 +120,7 @@ func main() {
 			serverErr <- fmt.Errorf("kafka consumer: %w", runErr)
 		}
 	}()
+
 	if bot != nil {
 		go func() {
 			appLog.Info("telegram bot started")
@@ -112,6 +129,7 @@ func main() {
 			}
 		}()
 	}
+
 	go func() {
 		appLog.Info("notification service started", slog.String("port", cfg.HTTP.Port))
 		if runErr := srv.ListenAndServe(); !errors.Is(runErr, http.ErrServerClosed) {
@@ -121,6 +139,7 @@ func main() {
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
 	select {
 	case err = <-serverErr:
 		appLog.Error("service error", slog.Any("error", err))
@@ -134,9 +153,11 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer shutdownCancel()
+
 	if err = srv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	appLog.Info("notification service stopped")
 }

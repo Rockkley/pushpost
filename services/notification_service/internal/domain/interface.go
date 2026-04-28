@@ -21,5 +21,7 @@ type NotificationUseCase interface {
 }
 
 type TelegramLinker interface {
+	GenerateTelegramLinkCode(ctx context.Context, userID uuid.UUID) (string, error)
 	BindTelegram(ctx context.Context, code string, chatID int64, username string) error
+	UnbindTelegram(ctx context.Context, userID uuid.UUID) error
 }

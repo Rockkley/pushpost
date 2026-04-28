@@ -73,15 +73,22 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 		username = msg.From.UserName
 	}
 	if err := b.linker.BindTelegram(ctx, parts[1], msg.Chat.ID, username); err != nil {
-		b.log.Warn("telegram bind failed", slog.String("code", parts[1]), slog.Any("error", err))
+		b.log.Warn("telegram bind failed", slog.Any("error", err))
 		b.sendText(msg.Chat.ID, "❌ Код недействителен или истёк\\.")
 		return
 	}
 	b.sendText(msg.Chat.ID, "✅ Аккаунт PushPost успешно привязан\\!")
 }
 
+// sendText отправляет пользователю ответное сообщение.
+// Ошибки логируются — без этого оператор не узнает о недоставленных ответах.
 func (b *Bot) sendText(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, _ = b.api.Send(msg)
+	if _, err := b.api.Send(msg); err != nil {
+		b.log.Warn("failed to send telegram message",
+			slog.Int64("chat_id", chatID),
+			slog.Any("error", err),
+		)
+	}
 }

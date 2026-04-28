@@ -47,7 +47,7 @@ func (r *notificationRepo) Create(ctx context.Context, n *entity.Notification) e
 	return nil
 }
 
-func (r *notificationRepo) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*entity.Notification, error) {
+func (r *notificationRepo) GetForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*entity.Notification, error) {
 	query := `
 		SELECT id, user_id, type, title, body, data, read_at, created_at
 		FROM   notifications

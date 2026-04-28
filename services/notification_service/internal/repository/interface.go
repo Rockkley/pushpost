@@ -10,7 +10,7 @@ import (
 
 type NotificationRepository interface {
 	Create(ctx context.Context, n *entity.Notification) error
-	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*entity.Notification, error)
+	GetForUser(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*entity.Notification, error)
 	GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkAsRead(ctx context.Context, notificationID, userID uuid.UUID) error
 	MarkAllAsRead(ctx context.Context, userID uuid.UUID) error

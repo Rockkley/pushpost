@@ -25,8 +25,10 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error
 	if err != nil {
 		return err
 	}
+
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
+
 	notifications, err := h.uc.GetForUser(r.Context(), userID, limit, offset)
 	if err != nil {
 		return err
@@ -34,7 +36,10 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error
 	if notifications == nil {
 		notifications = []*entity.Notification{}
 	}
-	return httperror.WriteJSON(w, http.StatusOK, map[string]any{"notifications": notifications, "count": len(notifications)})
+	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
+		"notifications": notifications,
+		"count":         len(notifications),
+	})
 }
 
 func (h *NotificationHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) error {
@@ -95,6 +100,7 @@ func (h *NotificationHandler) SetPreference(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		return err
 	}
+
 	var body struct {
 		Type    string `json:"type"`
 		Channel string `json:"channel"`
@@ -103,10 +109,38 @@ func (h *NotificationHandler) SetPreference(w http.ResponseWriter, r *http.Reque
 	if err = json.NewDecoder(r.Body).Decode(&body); err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}
-	if body.Type == "" || body.Channel == "" {
-		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "type and channel are required")
+
+	if body.Type == "" {
+		return commonapperr.Validation(commonapperr.CodeFieldRequired, "type", "type is required")
 	}
-	if err = h.uc.SetPreference(r.Context(), &entity.NotificationPreference{UserID: userID, Type: entity.NotificationType(body.Type), Channel: entity.Channel(body.Channel), Enabled: body.Enabled}); err != nil {
+	if body.Channel == "" {
+		return commonapperr.Validation(commonapperr.CodeFieldRequired, "channel", "channel is required")
+	}
+
+	// Проверяем допустимые значения channel.
+	// Недопустимые строки не должны попадать в БД:
+	// они нарушат CHECK constraint и приведут к молчаливой потере доставки.
+	if !isValidChannel(entity.Channel(body.Channel)) {
+		return commonapperr.Validation(
+			commonapperr.CodeFieldInvalid, "channel",
+			"unknown channel, allowed: in_app, telegram",
+		)
+	}
+
+	// Проверяем допустимые значения type.
+	if !isValidNotificationType(entity.NotificationType(body.Type)) {
+		return commonapperr.Validation(
+			commonapperr.CodeFieldInvalid, "type",
+			"unknown notification type",
+		)
+	}
+
+	if err = h.uc.SetPreference(r.Context(), &entity.NotificationPreference{
+		UserID:  userID,
+		Type:    entity.NotificationType(body.Type),
+		Channel: entity.Channel(body.Channel),
+		Enabled: body.Enabled,
+	}); err != nil {
 		return err
 	}
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "preference updated"})
@@ -114,13 +148,17 @@ func (h *NotificationHandler) SetPreference(w http.ResponseWriter, r *http.Reque
 
 func (h *NotificationHandler) GenerateTelegramCode(w http.ResponseWriter, r *http.Request) error {
 	userID, err := requireUserID(r)
+
 	if err != nil {
 		return err
 	}
+
 	code, err := h.uc.GenerateTelegramLinkCode(r.Context(), userID)
+
 	if err != nil {
 		return err
 	}
+
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"code": code})
 }
 
@@ -135,10 +173,36 @@ func (h *NotificationHandler) UnbindTelegram(w http.ResponseWriter, r *http.Requ
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "telegram unbound"})
 }
 
+// ── helpers ───────────────────────────────────────────────────────────────────
+
 func requireUserID(r *http.Request) (uuid.UUID, error) {
 	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
 	if !ok || userID == uuid.Nil {
 		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing authenticated user")
 	}
 	return userID, nil
+}
+
+// isValidChannel проверяет, что channel входит в допустимое множество.
+// Является единственным источником правды на уровне транспорта.
+// Допустимые значения должны совпадать с entity.AllChannels и CHECK constraint в миграции.
+func isValidChannel(ch entity.Channel) bool {
+	for _, allowed := range entity.AllChannels {
+		if ch == allowed {
+			return true
+		}
+	}
+	return false
+}
+
+// isValidNotificationType проверяет, что type входит в допустимое множество.
+func isValidNotificationType(t entity.NotificationType) bool {
+	switch t {
+	case entity.TypeFriendRequestReceived,
+		entity.TypeFriendRequestAccepted,
+		entity.TypeFriendRequestRejected,
+		entity.TypeMessageReceived:
+		return true
+	}
+	return false
 }
