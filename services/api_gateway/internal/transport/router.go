@@ -8,6 +8,7 @@ import (
 	myHTTP "github.com/rockkley/pushpost/services/api_gateway/internal/transport/http"
 	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
@@ -49,8 +50,10 @@ func NewRouter(
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
 	r.Use(chimiddleware.Recoverer)
+	r.Use(metrics.Middleware("api-gateway"))
 
 	r.Handle("/auth/*", http.HandlerFunc(p.Auth.ServeHTTP))
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMW.RequireAuth)

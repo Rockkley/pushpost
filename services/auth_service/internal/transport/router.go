@@ -9,6 +9,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	myHTTP "github.com/rockkley/pushpost/services/auth_service/internal/transport/http"
 	authmiddleware "github.com/rockkley/pushpost/services/auth_service/internal/transport/http/middleware"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 )
 
 func NewRouter(
@@ -21,7 +22,9 @@ func NewRouter(
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
 	r.Use(chimiddleware.Recoverer)
+	r.Use(metrics.Middleware("auth-service"))
 	r.Use(chimiddleware.URLFormat)
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Route("/auth", func(r chi.Router) {
 		r.Post("/register", handlerhttp.MakeHandler(authHandler.Register))

@@ -5,6 +5,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	myHTTP "github.com/rockkley/pushpost/services/message_service/internal/transport/http"
 	"log/slog"
@@ -15,8 +16,10 @@ func NewRouter(log *slog.Logger, h *myHTTP.MessageHandler) *chi.Mux {
 
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
+	r.Use(metrics.Middleware("message-service"))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(commonmiddleware.RequireUserID)
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Route("/messages", func(r chi.Router) {
 		r.Post("/", handlerhttp.MakeHandler(h.SendMessage))

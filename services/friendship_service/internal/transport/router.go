@@ -8,6 +8,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 	myHTTP "github.com/rockkley/pushpost/services/friendship_service/internal/transport/http"
 )
 
@@ -16,8 +17,11 @@ func NewRouter(log *slog.Logger, h *myHTTP.FriendshipHandler) *chi.Mux {
 
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
+	r.Use(metrics.Middleware("friendship-service"))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(commonmiddleware.RequireUserID)
+
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Post("/friends/requests", handlerhttp.MakeHandler(h.SendRequest))
 	r.Get("/friends/requests/incoming", handlerhttp.MakeHandler(h.GetIncomingRequests))

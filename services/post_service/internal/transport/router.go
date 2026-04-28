@@ -8,6 +8,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	myHTTP "github.com/rockkley/pushpost/services/post_service/internal/transport/http"
 )
@@ -17,7 +18,9 @@ func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedS
 
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
+	r.Use(metrics.Middleware("post-service"))
 	r.Use(chimiddleware.Recoverer)
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

@@ -1,6 +1,7 @@
 package transport
 
 import (
+	myHTTP "github.com/rockkley/pushpost/services/notification_service/internal/transport/http"
 	"log/slog"
 	"time"
 
@@ -8,16 +9,18 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	handlerhttp "github.com/rockkley/pushpost/services/common_service/http"
 	"github.com/rockkley/pushpost/services/common_service/httplog"
+	"github.com/rockkley/pushpost/services/common_service/metrics"
 	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
-	myHTTP "github.com/rockkley/pushpost/services/notification_service/internal/transport/http"
 )
 
 func NewRouter(log *slog.Logger, h *myHTTP.NotificationHandler, sse *myHTTP.SSEHandler) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
+	r.Use(metrics.Middleware("notification-service"))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(commonmiddleware.RequireUserID)
+	r.Handle("/metrics", metrics.Handler())
 
 	r.Route("/notifications", func(r chi.Router) {
 		r.Get("/stream", sse.Subscribe)
