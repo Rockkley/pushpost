@@ -20,9 +20,11 @@ var _ MessageSender = (*Bot)(nil)
 
 func NewBot(token string, linker domain.TelegramLinker, log *slog.Logger) (*Bot, error) {
 	api, err := tgbotapi.NewBotAPI(token)
+
 	if err != nil {
 		return nil, fmt.Errorf("create telegram bot: %w", err)
 	}
+
 	return &Bot{api: api, linker: linker, log: log.With("component", "telegram_bot")}, nil
 }
 
@@ -48,9 +50,11 @@ func (b *Bot) Run(ctx context.Context) error {
 func (b *Bot) SendMessage(ctx context.Context, chatID int64, text string) error {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
+
 	if _, err := b.api.Send(msg); err != nil {
 		return fmt.Errorf("send telegram message to chat %d: %w", chatID, err)
 	}
+
 	return nil
 }
 
@@ -58,30 +62,38 @@ func (b *Bot) handleUpdate(ctx context.Context, update tgbotapi.Update) {
 	if update.Message == nil {
 		return
 	}
+
 	msg := update.Message
 	parts := strings.Fields(strings.TrimSpace(msg.Text))
+
 	if len(parts) == 0 || parts[0] != "/start" {
 		b.sendText(msg.Chat.ID, "Используйте команду /start <код> для привязки аккаунта PushPost\\.")
+
 		return
 	}
+
 	if len(parts) < 2 {
 		b.sendText(msg.Chat.ID, "Пожалуйста, укажите код: `/start <код>`")
+
 		return
 	}
+
 	username := ""
+
 	if msg.From != nil {
 		username = msg.From.UserName
 	}
+
 	if err := b.linker.BindTelegram(ctx, parts[1], msg.Chat.ID, username); err != nil {
 		b.log.Warn("telegram bind failed", slog.Any("error", err))
 		b.sendText(msg.Chat.ID, "❌ Код недействителен или истёк\\.")
+
 		return
 	}
+
 	b.sendText(msg.Chat.ID, "✅ Аккаунт PushPost успешно привязан\\!")
 }
 
-// sendText отправляет пользователю ответное сообщение.
-// Ошибки логируются — без этого оператор не узнает о недоставленных ответах.
 func (b *Bot) sendText(chatID int64, text string) {
 	msg := tgbotapi.NewMessage(chatID, text)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2

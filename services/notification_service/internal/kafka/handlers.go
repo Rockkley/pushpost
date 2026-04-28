@@ -24,21 +24,26 @@ func NewHandlers(uc domain.NotificationUseCase, log *slog.Logger) *Handlers {
 // Это обеспечивает идемпотентность при повторной доставке Kafka (at-least-once).
 // При ретрае одного и того же события генерируется тот же UUID →
 // INSERT ON CONFLICT DO NOTHING в репозитории предотвращает дубликат.
+
 func notifID(key string) uuid.UUID {
 	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(key))
 }
 
 func (h *Handlers) HandleFriendRequestSent(ctx context.Context, payload json.RawMessage) error {
 	var p domain.FriendRequestSentPayload
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("decode friend_request.sent: %w", err)
 	}
+
 	receiverID, err := uuid.Parse(p.ReceiverID)
+
 	if err != nil {
 		h.log.Warn("invalid receiver_id in friend_request.sent, skipping",
 			slog.String("receiver_id", p.ReceiverID))
 		return nil
 	}
+
 	return h.uc.CreateAndDeliver(ctx, &entity.Notification{
 		ID:     notifID("friend_request.received:" + p.RequestID),
 		UserID: receiverID,
@@ -96,13 +101,17 @@ func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.Raw
 
 func (h *Handlers) HandleFriendRequestRejected(ctx context.Context, payload json.RawMessage) error {
 	var p domain.FriendRequestRejectedPayload
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("decode friend_request.rejected: %w", err)
 	}
+
 	senderID, err := uuid.Parse(p.SenderID)
+
 	if err != nil {
 		h.log.Warn("invalid sender_id in friend_request.rejected, skipping",
 			slog.String("sender_id", p.SenderID))
+
 		return nil
 	}
 
@@ -118,6 +127,7 @@ func (h *Handlers) HandleFriendRequestRejected(ctx context.Context, payload json
 
 func (h *Handlers) HandleMessageSent(ctx context.Context, payload json.RawMessage) error {
 	var p domain.MessageSentPayload
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		return fmt.Errorf("decode message.sent: %w", err)
 	}

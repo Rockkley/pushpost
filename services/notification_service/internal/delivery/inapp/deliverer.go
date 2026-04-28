@@ -51,7 +51,6 @@ func (d *Deliverer) Deliver(ctx context.Context, n *entity.Notification) error {
 	}).Err()
 }
 
-// StreamKey returns the Redis Stream key for a given user.
 func StreamKey(userID uuid.UUID) string {
 	return streamKeyPrefix + userID.String()
 }
