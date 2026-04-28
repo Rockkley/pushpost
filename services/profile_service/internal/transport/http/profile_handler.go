@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -32,7 +33,7 @@ func (h *ProfileHandler) GetByUsername(w http.ResponseWriter, r *http.Request) e
 
 	profile, err := h.uc.GetByUsername(r.Context(), username)
 	if err != nil {
-		if err == domain.ErrProfileNotFound {
+		if errors.Is(err, domain.ErrProfileNotFound) {
 			return commonapperr.NotFound("profile_not_found", "profile not found")
 		}
 
@@ -90,7 +91,7 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	if err = h.uc.UpdateProfile(r.Context(), profile); err != nil {
-		if err == domain.ErrProfileNotFound {
+		if errors.Is(err, domain.ErrProfileNotFound) {
 			return commonapperr.NotFound("profile_not_found", "profile not found")
 		}
 

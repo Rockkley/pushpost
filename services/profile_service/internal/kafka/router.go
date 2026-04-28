@@ -34,7 +34,8 @@ func (r *Router) Route(ctx context.Context, env domain.Envelope) error {
 		return r.userCreatedHandler.Handle(ctx, evt)
 
 	default:
-		r.log.Warn("unhandled event", slog.String("event_type", env.EventType))
-		return apperror.InvalidEventType(fmt.Errorf("unsupported event type: %s", env.EventType))
+		r.log.Warn("unhandled event, skipping", slog.String("event_type", env.EventType))
+
+		return nil
 	}
 }

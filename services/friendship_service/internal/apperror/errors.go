@@ -36,9 +36,9 @@ func RequestCooldown() apperror.AppError {
 
 func MapConstraint(constraintName string) apperror.AppError {
 	switch constraintName {
-	case "friendships_no_self":
+	case "friendship_requests_no_self":
 		return CannotBefriendSelf()
-	case "friendships_unique":
+	case "friendships_unique_pair":
 		return AlreadyFriends()
 	case "friendship_requests_unique_pending":
 		return FriendRequestExists()

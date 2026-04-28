@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/google/uuid"
+	"github.com/rockkley/pushpost/services/common_service/apperror"
 	"io"
 	"net/http"
 	"net/url"
@@ -181,23 +182,37 @@ func decodeUser(resp *http.Response) (*UserResponse, error) {
 }
 
 func decodeError(resp *http.Response) error {
-	data, _ := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
-	msg := strings.TrimSpace(string(data))
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, maxBodySize))
+
+	var errResp struct {
+		Code  string `json:"code"`
+		Field string `json:"field"`
+	}
+	_ = json.Unmarshal(body, &errResp)
 
 	switch resp.StatusCode {
-	case http.StatusBadRequest:
-		if msg == "" {
-			return fmt.Errorf("bad request")
-		}
-		return fmt.Errorf("bad request: %s", msg)
 	case http.StatusNotFound:
 		return ErrNotFound
-	default:
-		if msg == "" {
-			return fmt.Errorf("server error (%d)", resp.StatusCode)
+	case http.StatusConflict:
+		if errResp.Code != "" {
+			return apperror.Conflict(errResp.Code, errResp.Field, "conflict")
 		}
-
-		return fmt.Errorf("server error (%d): %s", resp.StatusCode, msg)
+		return apperror.Conflict(apperror.CodeAlreadyExists, "", "resource already exists")
+	case http.StatusBadRequest:
+		if errResp.Code != "" {
+			return apperror.BadRequest(errResp.Code, errResp.Field)
+		}
+		return apperror.BadRequest(apperror.CodeValidationFailed, strings.TrimSpace(string(body)))
+	case http.StatusUnprocessableEntity:
+		if errResp.Code != "" {
+			return apperror.Validation(errResp.Code, errResp.Field, "validation failed")
+		}
+		return apperror.BadRequest(apperror.CodeValidationFailed, "validation failed")
+	default:
+		return apperror.Internal(
+			fmt.Sprintf("upstream error (%d)", resp.StatusCode),
+			fmt.Errorf("%s", strings.TrimSpace(string(body))),
+		)
 	}
 }
 
