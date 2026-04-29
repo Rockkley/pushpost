@@ -2,6 +2,7 @@ package http
 
 import (
 	"encoding/json"
+	"github.com/rockkley/pushpost/services/post_service/internal/apperror"
 	"github.com/rockkley/pushpost/services/post_service/internal/domain"
 	"net/http"
 	"strconv"
@@ -214,19 +215,33 @@ func (h *PostHandler) GetPostByID(w http.ResponseWriter, r *http.Request) error 
 
 func (h *PostHandler) LikePost(w http.ResponseWriter, r *http.Request) error {
 	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
+
 	if !ok {
 		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
 	}
 
 	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+
 	if err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid post id")
 	}
 
-	post, err := h.uc.LikePost(r.Context(), postID, userID)
+	post, err := h.uc.GetPostByID(r.Context(), postID)
+
 	if err != nil {
 		return err
 	}
+
+	if post.AuthorID == userID {
+		return commonapperr.BadRequest(apperror.CannotVoteOwnPost().Error(), "cannot like your own post")
+	}
+
+	post, err = h.uc.LikePost(r.Context(), postID, userID)
+
+	if err != nil {
+		return err
+	}
+
 	return httperror.WriteJSON(w, http.StatusOK, post)
 }
 
@@ -238,11 +253,22 @@ func (h *PostHandler) DislikePost(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	postID, err := uuid.Parse(chi.URLParam(r, "postID"))
+
 	if err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid post id")
 	}
 
-	post, err := h.uc.DislikePost(r.Context(), postID, userID)
+	post, err := h.uc.GetPostByID(r.Context(), postID)
+
+	if err != nil {
+		return err
+	}
+
+	if post.AuthorID == userID {
+		return commonapperr.BadRequest(apperror.CannotVoteOwnPost().Error(), "cannot like your own post")
+	}
+
+	post, err = h.uc.DislikePost(r.Context(), postID, userID)
 
 	if err != nil {
 		return err

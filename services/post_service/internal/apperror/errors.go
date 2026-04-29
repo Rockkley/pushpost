@@ -17,3 +17,7 @@ func ContentTooLong() apperror.AppError {
 func NotPostAuthor() apperror.AppError {
 	return apperror.Forbidden(CodeNotPostAuthor, "you are not the author of this post")
 }
+
+func CannotVoteOwnPost() apperror.AppError {
+	return apperror.Validation(CodeCannotVoteOwnPost, "like", "you cannot like your own post")
+}

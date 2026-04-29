@@ -30,11 +30,13 @@ func (n *RedisStreamsNotifier) Publish(ctx context.Context, userIDs []uuid.UUID,
 	}
 
 	b, err := json.Marshal(event)
+
 	if err != nil {
 		return fmt.Errorf("marshal feed event: %w", err)
 	}
 
 	pipe := n.rdb.Pipeline()
+
 	for _, userID := range userIDs {
 		pipe.XAdd(ctx, &redis.XAddArgs{
 			Stream: streamKeyPrefix + userID.String(),
@@ -50,6 +52,7 @@ func (n *RedisStreamsNotifier) Publish(ctx context.Context, userIDs []uuid.UUID,
 	if _, err = pipe.Exec(ctx); err != nil {
 		return fmt.Errorf("redis pipeline publish: %w", err)
 	}
+
 	return nil
 }
 

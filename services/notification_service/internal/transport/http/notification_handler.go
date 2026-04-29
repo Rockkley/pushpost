@@ -6,11 +6,10 @@ import (
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
-	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
+	commontransport "github.com/rockkley/pushpost/services/common_service/transport"
 	"github.com/rockkley/pushpost/services/notification_service/internal/domain"
 	"github.com/rockkley/pushpost/services/notification_service/internal/entity"
 	"net/http"
-	"strconv"
 )
 
 type NotificationHandler struct{ uc domain.NotificationUseCase }
@@ -20,12 +19,12 @@ func NewNotificationHandler(uc domain.NotificationUseCase) *NotificationHandler 
 }
 
 func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
 
-	limit, offset, err := parsePagination(r)
+	limit, offset, err := commontransport.ParsePagination(r)
 
 	if err != nil {
 		return err
@@ -45,7 +44,7 @@ func (h *NotificationHandler) List(w http.ResponseWriter, r *http.Request) error
 }
 
 func (h *NotificationHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -57,7 +56,7 @@ func (h *NotificationHandler) GetUnreadCount(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -72,7 +71,7 @@ func (h *NotificationHandler) MarkAsRead(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *NotificationHandler) MarkAllAsRead(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -83,7 +82,7 @@ func (h *NotificationHandler) MarkAllAsRead(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *NotificationHandler) GetPreferences(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -98,7 +97,7 @@ func (h *NotificationHandler) GetPreferences(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *NotificationHandler) SetPreference(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -149,7 +148,7 @@ func (h *NotificationHandler) SetPreference(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *NotificationHandler) GenerateTelegramCode(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 		return err
@@ -165,7 +164,7 @@ func (h *NotificationHandler) GenerateTelegramCode(w http.ResponseWriter, r *htt
 }
 
 func (h *NotificationHandler) UnbindTelegram(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 		return err
 	}
@@ -176,14 +175,6 @@ func (h *NotificationHandler) UnbindTelegram(w http.ResponseWriter, r *http.Requ
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
-
-func requireUserID(r *http.Request) (uuid.UUID, error) {
-	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
-	if !ok || userID == uuid.Nil {
-		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing authenticated user")
-	}
-	return userID, nil
-}
 
 // isValidChannel проверяет, что channel входит в допустимое множество.
 // Является единственным источником правды на уровне транспорта.
@@ -207,27 +198,4 @@ func isValidNotificationType(t entity.NotificationType) bool {
 		return true
 	}
 	return false
-}
-
-func parsePagination(r *http.Request) (limit, offset int, err error) {
-	limit = 0
-	offset = 0
-
-	rawLimit := r.URL.Query().Get("limit")
-	if rawLimit != "" {
-		limit, err = strconv.Atoi(rawLimit)
-		if err != nil {
-			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid limit — must be an integer")
-		}
-	}
-
-	rawOffset := r.URL.Query().Get("offset")
-	if rawOffset != "" {
-		offset, err = strconv.Atoi(rawOffset)
-		if err != nil {
-			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid offset — must be an integer")
-		}
-	}
-
-	return limit, offset, nil
 }

@@ -18,7 +18,7 @@ import (
 	"github.com/rockkley/pushpost/services/common_service/outbox"
 	"github.com/rockkley/pushpost/services/common_service/outbox/kafka"
 	outboxpg "github.com/rockkley/pushpost/services/common_service/outbox/postgres"
-	friendshipv1 "github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
+	"github.com/rockkley/pushpost/services/friendship_service/gen/friendshipv1"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/config"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain/usecase"
 	repopg "github.com/rockkley/pushpost/services/friendship_service/internal/repository/postgres"
@@ -57,12 +57,12 @@ func main() {
 	}
 	defer db.Close()
 
-	// Business logic
 	uow := repopg.NewUnitOfWork(db)
 	friendUseCase := usecase.NewFriendshipUseCase(uow)
 
 	// Kafka outbox worker
 	kafkaPublisher := kafka.NewPublisher(cfg.Kafka.Brokers(), appLog)
+
 	defer func() {
 		if closeErr := kafkaPublisher.Close(); closeErr != nil {
 			appLog.Error("failed to close kafka publisher", slog.Any("error", closeErr))
@@ -78,6 +78,7 @@ func main() {
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
 	defer workerCancel()
+
 	go outboxWorker.Run(workerCtx)
 
 	// HTTP server
@@ -140,6 +141,7 @@ func main() {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer shutdownCancel()
+
 	if err = httpSrv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("HTTP graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)

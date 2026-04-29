@@ -51,3 +51,7 @@ func (m *Manager) Parse(tokenStr string) (jwt.MapClaims, error) {
 
 	return claims, nil
 }
+
+func (m *Manager) TTL() time.Duration {
+	return m.ttl
+}

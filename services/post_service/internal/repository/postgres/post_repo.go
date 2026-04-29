@@ -23,21 +23,23 @@ func NewPostRepository(exec database.Executor) repository.PostRepositoryInterfac
 }
 
 func (r *PostRepository) Create(ctx context.Context, post *entity.Post) error {
-	const query = `
+	query := `
 		INSERT INTO posts (id, author_id, content)
 		VALUES ($1, $2, $3)
 		RETURNING version, created_at, updated_at`
 
 	err := r.exec.QueryRowContext(ctx, query, post.ID, post.AuthorID, post.Content).
 		Scan(&post.Version, &post.CreatedAt, &post.UpdatedAt)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "create post")
 	}
+
 	return nil
 }
 
 func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Post, error) {
-	const query = `
+	query := `
 		SELECT id, author_id, content, version, likes_count, dislikes_count,
 		       likes_count - dislikes_count AS rating,
 		       created_at, updated_at, deleted_at
@@ -54,8 +56,10 @@ func (r *PostRepository) FindByID(ctx context.Context, id uuid.UUID) (*entity.Po
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.PostNotFound()
 		}
+
 		return nil, commonapperr.MapPostgresError(err, "find post by id")
 	}
+
 	return &p, nil
 }
 
@@ -64,7 +68,7 @@ func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*enti
 		return nil, nil
 	}
 
-	const query = `
+	query := `
 		SELECT id, author_id, content, version, likes_count, dislikes_count,
 		       likes_count - dislikes_count AS rating, created_at, updated_at
 
@@ -82,7 +86,7 @@ func (r *PostRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*enti
 }
 
 func (r *PostRepository) Update(ctx context.Context, post *entity.Post) error {
-	const query = `
+	query := `
 		UPDATE posts
 		SET content = $1,
 		    version = version + 1
@@ -97,8 +101,10 @@ func (r *PostRepository) Update(ctx context.Context, post *entity.Post) error {
 		if errors.Is(err, sql.ErrNoRows) {
 			return apperror.PostNotFound()
 		}
+
 		return commonapperr.MapPostgresError(err, "update post")
 	}
+
 	return nil
 }
 
@@ -113,7 +119,7 @@ func (r *PostRepository) GetByAuthors(
 		return nil, nil
 	}
 
-	const query = `
+	query := `
 		SELECT id, author_id, content, version, likes_count, dislikes_count,
 		       likes_count - dislikes_count AS rating, created_at, updated_at
 		FROM posts
@@ -139,7 +145,7 @@ func (r *PostRepository) GetByAuthor(
 	before time.Time,
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
-	const query = `
+	query := `
 		SELECT id, author_id, content, version, likes_count, dislikes_count,
 		       likes_count - dislikes_count AS rating, created_at, updated_at
 		FROM posts
@@ -150,6 +156,7 @@ func (r *PostRepository) GetByAuthor(
 		LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, authorID, before, beforeID, limit)
+
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "get posts by author")
 	}
@@ -159,7 +166,7 @@ func (r *PostRepository) GetByAuthor(
 }
 
 func (r *PostRepository) SetVote(ctx context.Context, postID, userID uuid.UUID, value int) (*entity.Post, error) {
-	const query = `
+	query := `
 		WITH target AS (
 			SELECT id FROM posts WHERE id = $1 AND deleted_at IS NULL
 		),
@@ -191,22 +198,25 @@ func (r *PostRepository) SetVote(ctx context.Context, postID, userID uuid.UUID, 
 		          p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at`
 
 	var post entity.Post
+
 	err := r.exec.QueryRowContext(ctx, query, postID, userID, value).Scan(
 		&post.ID, &post.AuthorID, &post.Content, &post.Version,
 		&post.LikesCount, &post.DislikesCount, &post.Rating,
 		&post.CreatedAt, &post.UpdatedAt,
 	)
+
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, apperror.PostNotFound()
 		}
 		return nil, commonapperr.MapPostgresError(err, "set post vote")
 	}
+
 	return &post, nil
 }
 
 func (r *PostRepository) RemoveVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error) {
-	const query = `
+	query := `
 		WITH target AS (
 			SELECT id FROM posts WHERE id = $1 AND deleted_at IS NULL
 		),
@@ -230,6 +240,7 @@ func (r *PostRepository) RemoveVote(ctx context.Context, postID, userID uuid.UUI
 		          p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at`
 
 	var post entity.Post
+
 	err := r.exec.QueryRowContext(ctx, query, postID, userID).Scan(
 		&post.ID, &post.AuthorID, &post.Content, &post.Version,
 		&post.LikesCount, &post.DislikesCount, &post.Rating,
@@ -248,21 +259,26 @@ func (r *PostRepository) RemoveVote(ctx context.Context, postID, userID uuid.UUI
 }
 
 func (r *PostRepository) SoftDelete(ctx context.Context, postID, authorID uuid.UUID) error {
-	const query = `
+	query := `
 		UPDATE posts SET deleted_at = NOW()
 		WHERE id = $1 AND author_id = $2 AND deleted_at IS NULL`
 
 	result, err := r.exec.ExecContext(ctx, query, postID, authorID)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "soft delete post")
 	}
+
 	rows, err := result.RowsAffected()
+
 	if err != nil {
 		return commonapperr.Internal("rows affected", err)
 	}
+
 	if rows == 0 {
 		return apperror.PostNotFound()
 	}
+
 	return nil
 }
 
@@ -279,5 +295,6 @@ func scanPosts(rows *sql.Rows) ([]*entity.Post, error) {
 		}
 		result = append(result, &p)
 	}
+
 	return result, rows.Err()
 }

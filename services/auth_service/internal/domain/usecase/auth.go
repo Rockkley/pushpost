@@ -52,7 +52,7 @@ func NewAuthUsecase(
 	}
 }
 
-func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*dto.RegisterResponseDto, error) {
+func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDTO) (*dto.RegisterResponseDTO, error) {
 	log := ctxlog.From(ctx).With(slog.String("op", "AuthUsecase.Register"))
 
 	hash, err := passwordTools.Hash(data.Password)
@@ -84,7 +84,7 @@ func (s *AuthUsecase) Register(ctx context.Context, data dto.RegisterUserDto) (*
 
 	log.Info("user registered", slog.String("user_id", created.ID.String()))
 
-	return &dto.RegisterResponseDto{
+	return &dto.RegisterResponseDTO{
 		ID:       created.ID,
 		Username: created.Username,
 		Email:    created.Email,
@@ -127,7 +127,7 @@ func (s *AuthUsecase) Login(ctx context.Context, req dto.LoginUserDTO) (string, 
 		SessionID: sessionID,
 		UserID:    user.ID,
 		DeviceID:  deviceID,
-		Expires:   time.Now().Add(24 * time.Hour).Unix(),
+		Expires:   time.Now().Add(s.jwtManager.TTL()).Unix(),
 	}
 
 	if err = s.sessionStore.Save(ctx, session); err != nil {

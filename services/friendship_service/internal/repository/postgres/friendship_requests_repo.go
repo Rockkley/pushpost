@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/database"
@@ -98,7 +99,12 @@ func (r *friendshipRequestRepository) UpdateStatus(
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "update request status")
 	}
-	rows, _ := result.RowsAffected()
+
+	rows, err := result.RowsAffected()
+
+	if err != nil {
+		return fmt.Errorf("rows affected for update request status: %w", err)
+	}
 
 	if rows == 0 {
 		return apperr.FriendRequestNotFound()
@@ -142,27 +148,30 @@ func (r *friendshipRequestRepository) GetIncoming(
 		ORDER BY created_at DESC`
 
 	rows, err := r.exec.QueryContext(ctx, query, receiverID)
-	if err != nil {
 
+	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "get incoming requests")
 	}
+
 	defer rows.Close()
 
 	var result []*entity.FriendshipRequest
+
 	for rows.Next() {
 		var req entity.FriendshipRequest
 		if err = rows.Scan(
 			&req.ID, &req.SenderID, &req.ReceiverID,
 			&req.Status, &req.CreatedAt, &req.UpdatedAt,
 		); err != nil {
-
 			return nil, commonapperr.MapPostgresError(err, "scan incoming request")
 		}
+
 		result = append(result, &req)
 	}
-	if err = rows.Err(); err != nil {
 
+	if err = rows.Err(); err != nil {
 		return nil, commonapperr.MapPostgresError(err, "iterate incoming requests")
 	}
+
 	return result, nil
 }

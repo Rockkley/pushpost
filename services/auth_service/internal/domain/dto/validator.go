@@ -41,7 +41,7 @@ func (e ValidationError) Error() string { return e.Code }
 
 func newError(code, field string) *ValidationError { return &ValidationError{Code: code, Field: field} }
 
-func ValidateRegisterUser(dto RegisterUserDto) []*ValidationError {
+func ValidateRegisterUser(dto RegisterUserDTO) []*ValidationError {
 	var errs []*ValidationError
 
 	if err := ValidateUsername(dto.Username); err != nil {

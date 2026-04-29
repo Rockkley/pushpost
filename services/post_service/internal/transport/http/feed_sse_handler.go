@@ -29,6 +29,7 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	log := ctxlog.From(r.Context()).With(slog.String("op", "FeedSSEHandler.Subscribe"))
 
 	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
+
 	if !ok || userID == uuid.Nil {
 		http.Error(w, `{"code":"unauthorized"}`, http.StatusUnauthorized)
 		return
@@ -36,6 +37,7 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	// Проверка поддержки SSE у клиента
 	flusher, ok := w.(http.Flusher)
+
 	if !ok {
 		http.Error(w, "streaming not supported", http.StatusInternalServerError)
 		return
@@ -63,22 +65,25 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		// Чтение событий из Redis Stream с блокировкой на 25 секунд
-		cmd := h.rdb.XRead(r.Context(), &redis.XReadArgs{
+		records, err := h.rdb.XRead(r.Context(), &redis.XReadArgs{
 			Streams: []string{streamKey, startID},
 			Count:   50,
 			Block:   25 * time.Second,
-		})
+		}).Result()
 
-		records, err := cmd.Result()
 		if err != nil {
 			// Нормальное завершение запроса
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return
 			}
 
-			// Таймаут ожидания — просто отправляем heartbeat
+			// Таймаут ожидания - просто отправляем heartbeat
 			if errors.Is(err, redis.Nil) {
-				fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+				if _, writeErr := fmt.Fprintf(w, "event: ping\ndata: {}\n\n"); writeErr != nil {
+					log.Warn("failed to write ping", slog.Any("error", writeErr))
+					return
+				}
+
 				flusher.Flush()
 				continue
 			}
@@ -90,7 +95,11 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 		// Если новых событий нет — heartbeat
 		if len(records) == 0 {
-			fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+			if _, err = fmt.Fprintf(w, "event: ping\ndata: {}\n\n"); err != nil {
+				log.Warn("failed to write ping", slog.Any("error", err))
+				return
+			}
+
 			flusher.Flush()
 			continue
 		}
@@ -102,25 +111,31 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 			for _, msg := range stream.Messages {
 
 				payloadRaw, ok := msg.Values["payload"].(string)
+
 				if !ok {
+					log.Warn("message payload has invalid type", slog.String("message_id", msg.ID))
 					continue
 				}
 
 				var event realtimepkg.FeedEvent
+
 				if err = json.Unmarshal([]byte(payloadRaw), &event); err != nil {
+					log.Warn("failed to decode feed event", slog.String("message_id", msg.ID), slog.Any("error", err))
 					continue
 				}
 
 				// Упаковка события
-				data, _ := json.Marshal(event)
+				data, err := json.Marshal(event)
+				if err != nil {
+					log.Error("failed to encode feed event", slog.String("message_id", msg.ID), slog.Any("error", err))
+					continue
+				}
 
-				// Отправка SSE
-				fmt.Fprintf(w,
-					"id: %s\nevent: %s\ndata: %s\n\n",
-					msg.ID,
-					event.Type,
-					data,
-				)
+				if _, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", msg.ID, event.Type, data); err != nil {
+					log.Warn("failed to write sse event", slog.String("message_id", msg.ID), slog.Any("error", err))
+					return
+				}
+
 				flusher.Flush()
 				lastID = msg.ID
 			}

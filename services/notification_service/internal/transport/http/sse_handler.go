@@ -53,7 +53,10 @@ func (h *SSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 
 	for {
 		records, err := h.rdb.XRead(r.Context(), &goredis.XReadArgs{
-			Streams: []string{streamKey, startID}, Count: 20, Block: 25 * time.Second}).Result()
+			Streams: []string{streamKey, startID},
+			Count:   20,
+			Block:   25 * time.Second,
+		}).Result()
 
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
@@ -61,7 +64,11 @@ func (h *SSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 			}
 
 			if errors.Is(err, goredis.Nil) {
-				fmt.Fprintf(w, "event: ping\ndata: {}\n\n")
+				if _, writeErr := fmt.Fprintf(w, "event: ping\ndata: {}\n\n"); writeErr != nil {
+					log.Warn("failed to write ping", slog.Any("error", writeErr))
+					return
+				}
+
 				flusher.Flush()
 				continue
 			}
@@ -76,18 +83,36 @@ func (h *SSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 			for _, msg := range stream.Messages {
 				payloadRaw, ok := msg.Values["payload"].(string)
 				if !ok {
+					log.Warn("message payload has invalid type", slog.String("message_id", msg.ID))
 					continue
 				}
 
 				var payload map[string]any
 
 				if err = json.Unmarshal([]byte(payloadRaw), &payload); err != nil {
+					log.Warn("failed to decode payload", slog.String("message_id", msg.ID), slog.Any("error", err))
 					continue
 				}
 
-				data, _ := json.Marshal(payload)
-				eventType, _ := msg.Values["type"].(string)
-				fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", msg.ID, eventType, data)
+				data, err := json.Marshal(payload)
+
+				if err != nil {
+					log.Error("failed to encode payload", slog.String("message_id", msg.ID), slog.Any("error", err))
+
+					continue
+				}
+
+				eventType, ok := msg.Values["type"].(string)
+
+				if !ok || eventType == "" {
+					eventType = "notification"
+				}
+
+				if _, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", msg.ID, eventType, data); err != nil {
+					log.Warn("failed to write sse event", slog.String("message_id", msg.ID), slog.Any("error", err))
+					return
+				}
+
 				flusher.Flush()
 				lastID = msg.ID
 			}

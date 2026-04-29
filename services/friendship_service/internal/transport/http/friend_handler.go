@@ -2,16 +2,15 @@ package http
 
 import (
 	"encoding/json"
+	commontransport "github.com/rockkley/pushpost/services/common_service/transport"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/entity"
 	"log/slog"
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
-	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
 	"github.com/rockkley/pushpost/services/friendship_service/internal/domain"
 )
 
@@ -24,7 +23,7 @@ func NewFriendshipHandler(uc domain.FriendshipUseCase) *FriendshipHandler {
 }
 
 func (h *FriendshipHandler) SendRequest(w http.ResponseWriter, r *http.Request) error {
-	senderID, err := requireUserID(r)
+	senderID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
@@ -55,14 +54,14 @@ func (h *FriendshipHandler) SendRequest(w http.ResponseWriter, r *http.Request) 
 
 func (h *FriendshipHandler) AcceptRequest(w http.ResponseWriter, r *http.Request) error {
 	slog.Debug("FriendshipHandler Accept Request")
-	receiverID, err := requireUserID(r)
+	receiverID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
 
-	senderID, err := parsePathUUID(r, "senderID")
+	senderID, err := commontransport.ParsePathUUID(r, "senderID")
 
 	if err != nil {
 
@@ -78,14 +77,14 @@ func (h *FriendshipHandler) AcceptRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *FriendshipHandler) RejectRequest(w http.ResponseWriter, r *http.Request) error {
-	receiverID, err := requireUserID(r)
+	receiverID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
 
-	senderID, err := parsePathUUID(r, "senderID")
+	senderID, err := commontransport.ParsePathUUID(r, "senderID")
 
 	if err != nil {
 
@@ -100,12 +99,12 @@ func (h *FriendshipHandler) RejectRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *FriendshipHandler) CancelRequest(w http.ResponseWriter, r *http.Request) error {
-	senderID, err := requireUserID(r)
+	senderID, err := commontransport.RequireUserID(r)
 	if err != nil {
 
 		return err
 	}
-	receiverID, err := parsePathUUID(r, "receiverID")
+	receiverID, err := commontransport.ParsePathUUID(r, "receiverID")
 
 	if err != nil {
 
@@ -120,12 +119,12 @@ func (h *FriendshipHandler) CancelRequest(w http.ResponseWriter, r *http.Request
 }
 
 func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 
 		return err
 	}
-	friendID, err := parsePathUUID(r, "userID")
+	friendID, err := commontransport.ParsePathUUID(r, "userID")
 	if err != nil {
 
 		return err
@@ -140,7 +139,7 @@ func (h *FriendshipHandler) DeleteFriendship(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *FriendshipHandler) GetFriendIDs(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
@@ -165,13 +164,13 @@ func (h *FriendshipHandler) GetFriendIDs(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *FriendshipHandler) AreFriends(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 	if err != nil {
 
 		return err
 	}
 
-	friendID, err := parsePathUUID(r, "userID")
+	friendID, err := commontransport.ParsePathUUID(r, "userID")
 
 	if err != nil {
 
@@ -189,13 +188,13 @@ func (h *FriendshipHandler) AreFriends(w http.ResponseWriter, r *http.Request) e
 }
 
 func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Request) error {
-	viewerID, err := requireUserID(r)
+	viewerID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
-	targetID, err := parsePathUUID(r, "userID")
+	targetID, err := commontransport.ParsePathUUID(r, "userID")
 	if err != nil {
 
 		return err
@@ -222,7 +221,7 @@ func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.Request) error {
-	receiverID, err := requireUserID(r)
+	receiverID, err := commontransport.RequireUserID(r)
 	if err != nil {
 
 		return err
@@ -254,26 +253,4 @@ func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.R
 		"requests": items,
 		"count":    len(items),
 	})
-}
-
-func requireUserID(r *http.Request) (uuid.UUID, error) {
-	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
-
-	if !ok || userID == uuid.Nil {
-
-		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing authenticated user")
-	}
-	return userID, nil
-}
-
-func parsePathUUID(r *http.Request, param string) (uuid.UUID, error) {
-	id, err := uuid.Parse(chi.URLParam(r, param))
-
-	if err != nil {
-
-		return uuid.Nil, commonapperr.BadRequest(
-			commonapperr.CodeFieldInvalid, "invalid "+param+" — must be a UUID",
-		)
-	}
-	return id, nil
 }

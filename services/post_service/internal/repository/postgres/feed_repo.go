@@ -41,6 +41,7 @@ func (r *FeedRepository) InsertBatch(
 		valueStrings[i] = fmt.Sprintf("($%d, $%d, $%d)", i+1, len(userIDs)+1, len(userIDs)+2)
 		args = append(args, userID)
 	}
+
 	args = append(args, postID, insertedAt)
 
 	query := fmt.Sprintf(
@@ -64,7 +65,7 @@ func (r *FeedRepository) GetFeed(
 	before time.Time,
 	beforeID uuid.UUID,
 ) ([]*entity.Post, error) {
-	const query = `
+	query := `
 		SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
 		       p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
 
@@ -96,7 +97,7 @@ func (r *FeedRepository) GetFeedSince(
 ) ([]*entity.Post, error) {
 	// Возвращает посты НОВЕЕ курсора (для reconciliation / refresh)
 	// Сортировка ASC — потом разворачиваем на уровне usecase
-	const query = `
+	query := `
 		SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
 		       p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
 
@@ -113,6 +114,7 @@ func (r *FeedRepository) GetFeedSince(
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "get feed since")
 	}
+
 	defer rows.Close()
 
 	posts, err := scanFeedPosts(rows)
@@ -125,26 +127,31 @@ func (r *FeedRepository) GetFeedSince(
 	for i, j := 0, len(posts)-1; i < j; i, j = i+1, j-1 {
 		posts[i], posts[j] = posts[j], posts[i]
 	}
+
 	return posts, nil
 }
 
 func (r *FeedRepository) FindRecipients(ctx context.Context, postID uuid.UUID) ([]uuid.UUID, error) {
-	const query = `SELECT user_id FROM feeds WHERE post_id = $1`
+	query := `SELECT user_id FROM feeds WHERE post_id = $1`
 
 	rows, err := r.exec.QueryContext(ctx, query, postID)
+
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "find feed recipients")
 	}
+
 	defer rows.Close()
 
 	var ids []uuid.UUID
 	for rows.Next() {
 		var id uuid.UUID
+
 		if err = rows.Scan(&id); err != nil {
 			return nil, err
 		}
 		ids = append(ids, id)
 	}
+
 	return ids, rows.Err()
 }
 
@@ -157,40 +164,47 @@ func (r *FeedRepository) DeleteByPostID(ctx context.Context, postID uuid.UUID) e
 }
 
 func (r *FeedRepository) DeleteByAuthor(ctx context.Context, recipientID, authorID uuid.UUID) error {
-	const query = `
+	query := `
 		DELETE FROM feeds
 		WHERE user_id = $1
 		  AND post_id IN (SELECT id FROM posts WHERE author_id = $2)`
 
 	_, err := r.exec.ExecContext(ctx, query, recipientID, authorID)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "feed delete by author")
 	}
+
 	return nil
 }
 
 func (r *FeedRepository) DeleteUserFeed(ctx context.Context, userID uuid.UUID) error {
 	_, err := r.exec.ExecContext(ctx, `DELETE FROM feeds WHERE user_id = $1`, userID)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "delete user feed")
 	}
+
 	return nil
 }
 
 func (r *FeedRepository) DeleteByAuthorFromAllFeeds(ctx context.Context, authorID uuid.UUID) error {
-	const query = `
+	query := `
 		DELETE FROM feeds
 		WHERE post_id IN (SELECT id FROM posts WHERE author_id = $1)`
 
 	_, err := r.exec.ExecContext(ctx, query, authorID)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "delete author posts from all feeds")
 	}
+
 	return nil
 }
 
 func scanFeedPosts(rows *sql.Rows) ([]*entity.Post, error) {
 	var result []*entity.Post
+
 	for rows.Next() {
 		var p entity.Post
 		if err := rows.Scan(
@@ -203,5 +217,6 @@ func scanFeedPosts(rows *sql.Rows) ([]*entity.Post, error) {
 		}
 		result = append(result, &p)
 	}
+
 	return result, rows.Err()
 }

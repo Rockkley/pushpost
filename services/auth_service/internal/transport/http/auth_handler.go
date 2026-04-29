@@ -22,7 +22,7 @@ func NewAuthHandler(authUseCase domain.AuthUsecase) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) error {
-	var req dto.RegisterUserDto
+	var req dto.RegisterUserDTO
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return commonapperr.BadRequest(commonapperr.CodeValidationFailed, "invalid JSON")
 	}

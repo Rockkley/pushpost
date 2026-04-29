@@ -2,17 +2,14 @@ package http
 
 import (
 	"encoding/json"
-	"net/http"
-	"strconv"
-
-	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/httperror"
-	commonmiddleware "github.com/rockkley/pushpost/services/common_service/middleware"
+	commontransport "github.com/rockkley/pushpost/services/common_service/transport"
 	"github.com/rockkley/pushpost/services/message_service/internal/domain"
 	"github.com/rockkley/pushpost/services/message_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/message_service/internal/entity"
+	"net/http"
 )
 
 type MessageHandler struct {
@@ -24,7 +21,7 @@ func NewMessageHandler(uc domain.MessageUseCase) *MessageHandler {
 }
 
 func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) error {
-	senderID, err := requireUserID(r)
+	senderID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
@@ -65,21 +62,21 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) err
 }
 
 func (h *MessageHandler) GetConversation(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
 
-	otherUserID, err := parsePathUUID(r, "userID")
+	otherUserID, err := commontransport.ParsePathUUID(r, "userID")
 
 	if err != nil {
 
 		return err
 	}
 
-	limit, offset, err := parsePagination(r)
+	limit, offset, err := commontransport.ParsePagination(r)
 
 	if err != nil {
 
@@ -109,14 +106,14 @@ func (h *MessageHandler) GetConversation(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MessageHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
 
-	messageID, err := parsePathUUID(r, "messageID")
+	messageID, err := commontransport.ParsePathUUID(r, "messageID")
 
 	if err != nil {
 
@@ -132,14 +129,14 @@ func (h *MessageHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) erro
 }
 
 func (h *MessageHandler) MarkAllAsRead(w http.ResponseWriter, r *http.Request) error {
-	receiverID, err := requireUserID(r)
+	receiverID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
 		return err
 	}
 
-	senderID, err := parsePathUUID(r, "userID")
+	senderID, err := commontransport.ParsePathUUID(r, "userID")
 
 	if err != nil {
 
@@ -155,7 +152,7 @@ func (h *MessageHandler) MarkAllAsRead(w http.ResponseWriter, r *http.Request) e
 }
 
 func (h *MessageHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
@@ -173,7 +170,7 @@ func (h *MessageHandler) GetUnreadCount(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHandler) GetUnreadMessages(w http.ResponseWriter, r *http.Request) error {
-	userID, err := requireUserID(r)
+	userID, err := commontransport.RequireUserID(r)
 
 	if err != nil {
 
@@ -195,56 +192,4 @@ func (h *MessageHandler) GetUnreadMessages(w http.ResponseWriter, r *http.Reques
 		"messages": messages,
 		"count":    len(messages),
 	})
-}
-
-// helpers
-func requireUserID(r *http.Request) (uuid.UUID, error) {
-	userID, ok := commonmiddleware.UserIDFromContext(r.Context())
-
-	if !ok || userID == uuid.Nil {
-
-		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing authenticated user")
-	}
-
-	return userID, nil
-}
-
-func parsePathUUID(r *http.Request, param string) (uuid.UUID, error) {
-	id, err := uuid.Parse(chi.URLParam(r, param))
-
-	if err != nil {
-
-		return uuid.Nil, commonapperr.BadRequest(
-			commonapperr.CodeFieldInvalid, "invalid "+param+" — must be a UUID",
-		)
-	}
-
-	return id, nil
-}
-
-func parsePagination(r *http.Request) (limit, offset int, err error) {
-	limit = 0
-	offset = 0
-
-	rawLimit := r.URL.Query().Get("limit")
-
-	if rawLimit != "" {
-		limit, err = strconv.Atoi(rawLimit)
-
-		if err != nil {
-			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid limit — must be an integer")
-		}
-	}
-
-	rawOffset := r.URL.Query().Get("offset")
-
-	if rawOffset != "" {
-		offset, err = strconv.Atoi(rawOffset)
-
-		if err != nil {
-			return 0, 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid offset — must be an integer")
-		}
-	}
-
-	return limit, offset, nil
 }
