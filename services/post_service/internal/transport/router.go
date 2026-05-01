@@ -35,7 +35,7 @@ func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedS
 			r.Post("/", handlerhttp.MakeHandler(h.CreatePost))
 			r.Get("/", handlerhttp.MakeHandler(h.GetPostsByIDs)) // GET /posts?ids=id1,id2
 			r.Get("/feed", handlerhttp.MakeHandler(h.GetFeed))
-			r.Get("/feed/subscribe", sseHandler.Subscribe) // SSE — не MakeHandler, управляет ответом сам
+			r.Get("/feed/subscribe", sseHandler.Subscribe) // SSE - не MakeHandler, управляет ответом сам
 			r.Get("/by-user/{userID}", handlerhttp.MakeHandler(h.GetUserPosts))
 			r.Get("/{postID}", handlerhttp.MakeHandler(h.GetPostByID))
 			r.Patch("/{postID}", handlerhttp.MakeHandler(h.UpdatePost))

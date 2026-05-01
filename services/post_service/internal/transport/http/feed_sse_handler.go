@@ -24,7 +24,7 @@ func NewFeedSSEHandler(rdb *redis.Client) *FeedSSEHandler {
 	return &FeedSSEHandler{rdb: rdb}
 }
 
-// Subscribe — SSE endpoint для получения событий ленты.
+// Subscribe - SSE endpoint для получения событий ленты.
 func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 	log := ctxlog.From(r.Context()).With(slog.String("op", "FeedSSEHandler.Subscribe"))
 
@@ -93,7 +93,7 @@ func (h *FeedSSEHandler) Subscribe(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
-		// Если новых событий нет — heartbeat
+		// Если новых событий нет - heartbeat
 		if len(records) == 0 {
 			if _, err = fmt.Fprintf(w, "event: ping\ndata: {}\n\n"); err != nil {
 				log.Warn("failed to write ping", slog.Any("error", err))

@@ -33,7 +33,7 @@ func (r *FeedRepository) InsertBatch(
 	}
 	slog.Info("inserting feed", slog.Int("users", len(userIDs)))
 	// Один INSERT со всеми получателями.
-	// Параметры: $1..$N — user_id, $(N+1) — post_id, $(N+2) — inserted_at
+	// Параметры: $1..$N - user_id, $(N+1) - post_id, $(N+2) - inserted_at
 	valueStrings := make([]string, len(userIDs))
 	args := make([]any, 0, len(userIDs)+2)
 
@@ -96,18 +96,18 @@ func (r *FeedRepository) GetFeedSince(
 	afterID uuid.UUID,
 ) ([]*entity.Post, error) {
 	// Возвращает посты НОВЕЕ курсора (для reconciliation / refresh)
-	// Сортировка ASC — потом разворачиваем на уровне usecase
+	// Сортировка ASC - потом разворачиваем на уровне usecase
 	query := `
-		SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
-		       p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
-
-		FROM feeds f
-		JOIN posts p ON p.id = f.post_id
-		WHERE f.user_id = $1
-		  AND p.deleted_at IS NULL
-		  AND (f.inserted_at, f.post_id) > ($2, $3)
-		ORDER BY f.inserted_at ASC, f.post_id ASC
-		LIMIT $4`
+				SELECT p.id, p.author_id, p.content, p.version, p.likes_count, p.dislikes_count,
+					   p.likes_count - p.dislikes_count AS rating, p.created_at, p.updated_at, f.inserted_at
+		
+				FROM feeds f
+				JOIN posts p ON p.id = f.post_id
+				WHERE f.user_id = $1
+				  AND p.deleted_at IS NULL
+				  AND (f.inserted_at, f.post_id) > ($2, $3)
+				ORDER BY f.inserted_at , f.post_id
+				LIMIT $4`
 
 	rows, err := r.exec.QueryContext(ctx, query, userID, after, afterID, limit)
 
@@ -123,7 +123,7 @@ func (r *FeedRepository) GetFeedSince(
 		return nil, err
 	}
 
-	// Разворачиваем — клиент ожидает DESC (новые сверху)
+	// Разворачиваем - клиент ожидает DESC (новые сверху)
 	for i, j := 0, len(posts)-1; i < j; i, j = i+1, j-1 {
 		posts[i], posts[j] = posts[j], posts[i]
 	}

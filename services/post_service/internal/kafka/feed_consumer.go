@@ -69,7 +69,7 @@ func (c *FeedConsumer) Run(ctx context.Context) error {
 				slog.Int64("offset", msg.Offset),
 				slog.Any("error", err),
 			)
-			// Не коммитим — Kafka повторит доставку (at-least-once)
+			// Не коммитим - Kafka повторит доставку (at-least-once)
 			continue
 		}
 
@@ -97,7 +97,7 @@ func (c *FeedConsumer) handle(ctx context.Context, msg kafka.Message) error {
 			slog.String("topic", msg.Topic),
 			slog.String("value", string(msg.Value)),
 		)
-		return nil // битое сообщение — пропускаем без ретрая
+		return nil // битое сообщение - пропускаем без ретрая
 	}
 
 	switch msg.Topic {
@@ -147,44 +147,44 @@ func (c *FeedConsumer) handlePostCreated(ctx context.Context, payload json.RawMe
 		return fmt.Errorf("get friend ids for author %s: %w", authorID, err)
 	}
 
-	// Явная копия — не мутируем исходный slice через append
-	userIDs := make([]uuid.UUID, len(friendIDs)+1)
-	copy(userIDs, friendIDs)
-
-	if err = c.feedRepo.InsertBatch(ctx, postID, userIDs, insertedAt); err != nil {
+	if err = c.feedRepo.InsertBatch(ctx, postID, friendIDs, insertedAt); err != nil {
 		return fmt.Errorf("feed insert batch post=%s: %w", postID, err)
 	}
 
 	// Нотифицируем всех получателей через Redis Streams
-	if err = c.notifier.Publish(ctx, userIDs, realtime.FeedEvent{
+	if err = c.notifier.Publish(ctx, friendIDs, realtime.FeedEvent{
 		Type:   realtime.EventPostAdded,
 		PostID: p.PostID,
 	}); err != nil {
 		c.log.Warn("notify post_added failed", slog.Any("error", err))
-		// некритично — лента корректна, только SSE не дойдёт
+		// некритично - лента корректна, только SSE не дойдёт
 	}
 
 	c.log.Info("feed populated",
 		slog.String("post_id", p.PostID),
-		slog.Int("recipients", len(userIDs)),
+		slog.Int("recipients", len(friendIDs)),
 	)
+
 	return nil
 }
 
 func (c *FeedConsumer) handlePostUpdated(ctx context.Context, payload json.RawMessage) error {
 	var p events.PostUpdatedEvent
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid post.updated payload, skipping")
 		return nil
 	}
 
 	postID, err := uuid.Parse(p.PostID)
+
 	if err != nil {
 		return nil
 	}
 
 	// Находим всех у кого этот пост в ленте
 	recipients, err := c.feedRepo.FindRecipients(ctx, postID)
+
 	if err != nil {
 		return fmt.Errorf("find recipients for post %s: %w", postID, err)
 	}
@@ -202,18 +202,22 @@ func (c *FeedConsumer) handlePostUpdated(ctx context.Context, payload json.RawMe
 
 func (c *FeedConsumer) handlePostDeleted(ctx context.Context, payload json.RawMessage) error {
 	var p events.PostDeletedEvent
+
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid post.deleted payload, skipping")
+
 		return nil
 	}
 
 	postID, err := uuid.Parse(p.PostID)
+
 	if err != nil {
 		return nil
 	}
 
 	// Сначала находим получателей (до удаления из feeds)
 	recipients, err := c.feedRepo.FindRecipients(ctx, postID)
+
 	if err != nil {
 		return fmt.Errorf("find recipients for deleted post %s: %w", postID, err)
 	}
@@ -241,6 +245,7 @@ func (c *FeedConsumer) handleFriendshipCreated(ctx context.Context, payload json
 
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid friendship.created payload, skipping")
+
 		return nil
 	}
 
@@ -271,15 +276,18 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid friendship.deleted payload, skipping")
+
 		return nil
 	}
 
 	user, err := uuid.Parse(p.UserID)
+
 	if err != nil {
 		return nil
 	}
 
 	friend, err := uuid.Parse(p.FriendID)
+
 	if err != nil {
 		return nil
 	}
@@ -293,7 +301,7 @@ func (c *FeedConsumer) handleFriendshipDeleted(ctx context.Context, payload json
 		return fmt.Errorf("delete user posts from friend feed: %w", err)
 	}
 
-	// Нотифицируем обоих — фронт удаляет посты из DOM
+	// Нотифицируем обоих - фронт удаляет посты из DOM
 	if err = c.notifier.Publish(ctx, []uuid.UUID{user}, realtime.FeedEvent{
 		Type:     realtime.EventFriendRemoved,
 		FriendID: p.FriendID,

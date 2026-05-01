@@ -307,7 +307,7 @@ func parseOptionalIntQuery(r *http.Request, key string) (int, error) {
 
 	value, err := strconv.Atoi(raw)
 	if err != nil {
-		return 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid "+key+" — must be an integer")
+		return 0, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid "+key+" - must be an integer")
 	}
 
 	return value, nil

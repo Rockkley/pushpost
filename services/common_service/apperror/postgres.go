@@ -43,7 +43,7 @@ func mapGenericPgError(pgErr *pgconn.PgError, context string) AppError {
 	case "23503": // foreign_key_violation
 		return BadRequest(CodeFieldInvalid, "referenced resource does not exist")
 
-	case "23514": // check_violation — fallback
+	case "23514": // check_violation - fallback
 		return BadRequest(CodeValidationFailed, "constraint violation")
 
 	case "23502": // not_null_violation

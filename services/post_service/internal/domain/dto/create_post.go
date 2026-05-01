@@ -39,7 +39,7 @@ func (d *CreatePostDTO) Validate() error {
 type GetFeedDTO struct {
 	UserID uuid.UUID
 	Limit  int
-	// Cursor: "2024-01-15T10:00:00Z,<uuid>" — ISO timestamp + post UUID
+	// Cursor: "2024-01-15T10:00:00Z,<uuid>" - ISO timestamp + post UUID
 	// Пустой = первая страница
 	Cursor string
 }

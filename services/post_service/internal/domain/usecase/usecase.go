@@ -164,7 +164,7 @@ func (uc *PostUseCase) GetUserPosts(ctx context.Context, authorID uuid.UUID, lim
 	if err != nil {
 		return domain.FeedResponse{}, err
 	}
-	// GetByAuthor возвращает посты без InsertedAt — используем CreatedAt для курсора
+	// GetByAuthor возвращает посты без InsertedAt - используем CreatedAt для курсора
 	for _, p := range posts {
 		p.InsertedAt = p.CreatedAt
 	}
@@ -247,7 +247,7 @@ func (uc *PostUseCase) encodeCursor(ts time.Time, id uuid.UUID) string {
 }
 
 // buildFeedResponse строит ответ с курсорами.
-// Курсор основан на InsertedAt — времени вставки в ленту, а не создания поста.
+// Курсор основан на InsertedAt - времени вставки в ленту, а не создания поста.
 // Это обеспечивает стабильный порядок: даже если друг загрузил старый пост,
 // он появится в ленте в хронологии добавления в feeds.
 func (uc *PostUseCase) buildFeedResponse(posts []*entity.Post, limit int) domain.FeedResponse {
@@ -257,11 +257,11 @@ func (uc *PostUseCase) buildFeedResponse(posts []*entity.Post, limit int) domain
 
 	resp := domain.FeedResponse{Posts: posts}
 
-	// top_cursor — самый новый пост (первый в результате DESC)
+	// top_cursor - самый новый пост (первый в результате DESC)
 	// Используется для GetFeedSince / reconciliation
 	resp.TopCursor = uc.encodeCursor(posts[0].InsertedAt, posts[0].ID)
 
-	// next_cursor — только если получили ровно limit записей (есть ещё страницы)
+	// next_cursor - только если получили ровно limit записей (есть ещё страницы)
 	if len(posts) == limit {
 		last := posts[len(posts)-1]
 		resp.NextCursor = uc.encodeCursor(last.InsertedAt, last.ID)
