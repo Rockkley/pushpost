@@ -40,69 +40,68 @@ func main() {
 	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
 	slog.SetDefault(appLog)
 
-	timeout := cfg.Services.Timeout
+	// Единый transport с правильно настроенным пулом соединений.
+	// Все прокси разделяют один transport — это обеспечивает корректное
+	// переиспользование TCP-соединений и предотвращает исчерпание дескрипторов.
+	sharedTransport := proxy.NewTransport(cfg.Services.Timeout)
 
-	authProxy, err := proxy.New(cfg.Services.AuthService, timeout)
-
+	authProxy, err := proxy.New(cfg.Services.AuthService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create auth proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	userProxy, err := proxy.NewStrippingAuth(cfg.Services.UserService, timeout)
-
+	userProxy, err := proxy.NewStrippingAuth(cfg.Services.UserService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create user proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	friendshipProxy, err := proxy.NewStrippingAuth(cfg.Services.FriendshipService, timeout)
-
+	friendshipProxy, err := proxy.NewStrippingAuth(cfg.Services.FriendshipService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create friendship proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	messageProxy, err := proxy.NewStrippingAuth(cfg.Services.MessageService, timeout)
-
+	messageProxy, err := proxy.NewStrippingAuth(cfg.Services.MessageService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create message proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	postProxy, err := proxy.NewStrippingAuth(cfg.Services.PostService, timeout)
-
+	postProxy, err := proxy.NewStrippingAuth(cfg.Services.PostService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create post proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	profileProxy, err := proxy.NewStrippingAuth(cfg.Services.ProfileService, timeout)
-
+	profileProxy, err := proxy.NewStrippingAuth(cfg.Services.ProfileService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create profile proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
-	notificationProxy, err := proxy.NewStrippingAuth(cfg.Services.NotificationService, timeout)
-
+	notificationProxy, err := proxy.NewStrippingAuth(cfg.Services.NotificationService, sharedTransport)
 	if err != nil {
 		appLog.Error("failed to create notification proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
-
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
+	defer func() {
+		if closeErr := profileClient.Close(); closeErr != nil {
+			appLog.Error("failed to close profile grpc connection", slog.Any("error", closeErr))
+		}
+	}()
 
 	friendshipClient, err := friendship_api.NewFriendshipClient(
 		cfg.Services.FriendshipService,
-		&http.Client{Timeout: timeout},
+		&http.Client{Timeout: cfg.Services.Timeout},
 	)
-
 	if err != nil {
 		appLog.Error("failed to create friendship client", slog.Any("error", err))
 		os.Exit(1)
@@ -112,15 +111,22 @@ func main() {
 	authMW := gwmiddleware.NewAuthMiddleware(jwtManager)
 	profileHandler := myHTTP.NewProfileHandler(profileClient, friendshipClient)
 
-	mux := transport.NewRouter(appLog, authMW, transport.Proxies{
-		Auth:         authProxy,
-		User:         userProxy,
-		Friendship:   friendshipProxy,
-		Message:      messageProxy,
-		Post:         postProxy,
-		Profile:      profileProxy,
-		Notification: notificationProxy,
-	}, *profileHandler)
+	mux := transport.NewRouter(
+		appLog,
+		authMW,
+		transport.Proxies{
+			Auth:         authProxy,
+			User:         userProxy,
+			Friendship:   friendshipProxy,
+			Message:      messageProxy,
+			Post:         postProxy,
+			Profile:      profileProxy,
+			Notification: notificationProxy,
+		},
+		profileHandler,
+		cfg.CORS.AllowedOrigins(),
+		cfg.CORS.MaxAge,
+	)
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.HTTP.Port),

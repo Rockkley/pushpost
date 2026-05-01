@@ -7,9 +7,18 @@ import (
 	"time"
 )
 
-func New(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, error) {
-	target, err := url.Parse(upstreamURL)
+func NewTransport(responseHeaderTimeout time.Duration) *http.Transport {
+	return &http.Transport{
+		ResponseHeaderTimeout: responseHeaderTimeout,
+		MaxIdleConns:          200,
+		MaxIdleConnsPerHost:   20,
+		IdleConnTimeout:       90 * time.Second,
+		DisableCompression:    false,
+	}
+}
 
+func New(upstreamURL string, transport *http.Transport) (*httputil.ReverseProxy, error) {
+	target, err := url.Parse(upstreamURL)
 	if err != nil {
 		return nil, err
 	}
@@ -19,15 +28,12 @@ func New(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, err
 			r.SetURL(target)
 			r.Out.Header.Set("X-Forwarded-Host", r.In.Host)
 		},
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: timeout,
-		},
+		Transport: transport,
 	}, nil
 }
 
-func NewStrippingAuth(upstreamURL string, timeout time.Duration) (*httputil.ReverseProxy, error) {
+func NewStrippingAuth(upstreamURL string, transport *http.Transport) (*httputil.ReverseProxy, error) {
 	target, err := url.Parse(upstreamURL)
-
 	if err != nil {
 		return nil, err
 	}
@@ -38,9 +44,7 @@ func NewStrippingAuth(upstreamURL string, timeout time.Duration) (*httputil.Reve
 			r.Out.Header.Set("X-Forwarded-Host", r.In.Host)
 			r.Out.Header.Del("Authorization")
 		},
-		Transport: &http.Transport{
-			ResponseHeaderTimeout: timeout,
-		},
+		Transport: transport,
 	}, nil
 }
 

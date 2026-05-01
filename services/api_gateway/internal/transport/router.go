@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"strings"
+	"time"
 )
 
 type Proxies struct {
@@ -35,28 +36,39 @@ func NewRouter(
 	log *slog.Logger,
 	authMW *middleware.AuthMiddleware,
 	p Proxies,
-	profileHandler myHTTP.ProfileHandler,
+	profileHandler *myHTTP.ProfileHandler,
+	corsAllowOrigins []string,
+	corsMaxAge int,
 ) *chi.Mux {
 
 	r := chi.NewRouter()
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"}, // FIXME: lock down to real domains
+		AllowedOrigins:   corsAllowOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Authorization", "Content-Type"},
+		AllowedHeaders:   []string{"Authorization", "Content-Type", "Last-Event-ID"},
 		AllowCredentials: false,
-		MaxAge:           300,
+		MaxAge:           corsMaxAge,
 	}))
+
 	r.Use(chimiddleware.RequestID)
 	r.Use(httplog.Logger(log))
 	r.Use(chimiddleware.Recoverer)
 	r.Use(metrics.Middleware("api-gateway"))
 
-	r.Handle("/auth/*", http.HandlerFunc(p.Auth.ServeHTTP))
+	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
 	r.Handle("/metrics", metrics.Handler())
+
+	r.Handle("/auth/*", http.HandlerFunc(p.Auth.ServeHTTP))
 
 	r.Group(func(r chi.Router) {
 		r.Use(authMW.RequireAuth)
+		r.Use(chimiddleware.Timeout(30 * time.Second))
 
 		r.Handle("/users/*", http.HandlerFunc(p.User.ServeHTTP))
 		r.Handle("/friends", http.HandlerFunc(p.Friendship.ServeHTTP))

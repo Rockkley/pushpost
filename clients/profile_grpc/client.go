@@ -30,6 +30,7 @@ type ProfileResponse struct {
 }
 
 type Client struct {
+	conn *grpc.ClientConn
 	grpc profilev1.ProfileServiceClient
 }
 
@@ -39,24 +40,32 @@ func NewClient(addr string) (*Client, error) {
 	}
 
 	conn, err := grpc.NewClient(addr, grpc.WithTransportCredentials(insecure.NewCredentials()))
-
 	if err != nil {
 		return nil, fmt.Errorf("dial profile service: %w", err)
 	}
 
-	return &Client{grpc: profilev1.NewProfileServiceClient(conn)}, nil
+	return &Client{
+		conn: conn,
+		grpc: profilev1.NewProfileServiceClient(conn),
+	}, nil
+}
+
+// Close закрывает gRPC-соединение. Должен вызываться при завершении работы приложения.
+func (c *Client) Close() error {
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.Close()
 }
 
 func (c *Client) GetByUsername(ctx context.Context, username string) (ProfileResponse, error) {
 	resp, err := c.grpc.GetProfileByUsername(ctx, &profilev1.GetProfileByUsernameRequest{
 		Username: username,
 	})
-
 	if err != nil {
 		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 			return ProfileResponse{}, ErrNotFound
 		}
-
 		return ProfileResponse{}, fmt.Errorf("profile grpc: %w", err)
 	}
 

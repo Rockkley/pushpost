@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -10,6 +11,7 @@ import (
 type Config struct {
 	HTTP     HTTPConfig
 	JWT      JWTConfig
+	CORS     CorsConfig
 	Services ServicesConfig
 }
 
@@ -22,6 +24,28 @@ type HTTPConfig struct {
 
 type JWTConfig struct {
 	Secret string `env:"JWT_SECRET" env-required:"true"`
+}
+
+type CorsConfig struct {
+	AllowedOriginsRaw string `env:"CORS_ALLOWED_ORIGINS" env-required:"true" env-separator:","`
+	MaxAge            int    `env:"CORS_MAX_AGE" env-default:"300"`
+}
+
+func (c *CorsConfig) AllowedOrigins() []string {
+	if len(c.AllowedOriginsRaw) == 0 {
+		return []string{}
+	}
+
+	origins := strings.Split(c.AllowedOriginsRaw, ",")
+	result := make([]string, 0, len(origins))
+
+	for _, o := range origins {
+		if o = strings.TrimSpace(o); o != "" {
+			result = append(result, o)
+		}
+	}
+
+	return result
 }
 
 type ServicesConfig struct {
@@ -55,6 +79,10 @@ func Load() (*Config, error) {
 func (c *Config) validate() error {
 	if len(c.JWT.Secret) < 32 {
 		return fmt.Errorf("jwt_secret must be at least 32 characters, got %d", len(c.JWT.Secret))
+	}
+
+	if len(c.CORS.AllowedOrigins()) == 0 {
+		return fmt.Errorf("cors_allowed_origins must not be empty")
 	}
 
 	return nil
