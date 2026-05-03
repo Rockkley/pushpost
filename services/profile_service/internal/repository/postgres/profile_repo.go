@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
 	commonapperr "github.com/rockkley/pushpost/services/common_service/apperror"
 	"github.com/rockkley/pushpost/services/common_service/database"
 	"github.com/rockkley/pushpost/services/profile_service/internal/domain"
@@ -38,41 +39,24 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 	username = strings.ToLower(strings.TrimSpace(username))
 
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, birth_date, avatar_url, bio, telegram_link, 
+		SELECT user_id, username, display_name, first_name, last_name, birth_date, avatar_url, bio, telegram_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  LOWER(username) = $1
 		  AND  deleted_at IS NULL`
 
-	var p entity.Profile
+	return r.scanProfile(r.exec.QueryRowContext(ctx, query, username))
+}
 
-	err := r.exec.QueryRowContext(ctx, query, username).Scan(
-		&p.UserID,
-		&p.Username,
-		&p.DisplayName,
-		&p.FirstName,
-		&p.LastName,
-		&p.BirthDate,
-		&p.AvatarURL,
-		&p.Bio,
-		&p.TelegramLink,
-		&p.IsPrivate,
-		&p.CreatedAt,
-		&p.UpdatedAt,
-		&p.DeletedAt,
-	)
+func (r *ProfileRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*entity.Profile, error) {
+	query := `
+		SELECT user_id, username, display_name, first_name, last_name, birth_date, avatar_url, bio, telegram_link,
+		       is_private, created_at, updated_at, deleted_at
+		FROM   profiles
+		WHERE  user_id = $1
+		  AND  deleted_at IS NULL`
 
-	if err != nil {
-
-		if errors.Is(err, sql.ErrNoRows) {
-
-			return nil, domain.ErrProfileNotFound
-		}
-
-		return nil, commonapperr.MapPostgresError(err, "find profile by username")
-	}
-
-	return &p, nil
+	return r.scanProfile(r.exec.QueryRowContext(ctx, query, userID))
 }
 
 func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile) error {
@@ -90,8 +74,7 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 		  AND  deleted_at IS NULL`
 
 	res, err := r.exec.ExecContext(
-		ctx,
-		query,
+		ctx, query,
 		profile.UserID,
 		profile.DisplayName,
 		profile.FirstName,
@@ -110,10 +93,56 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 	if err != nil {
 		return fmt.Errorf("update profile rows affected: %w", err)
 	}
-
 	if affected == 0 {
 		return domain.ErrProfileNotFound
 	}
-
 	return nil
+}
+
+func (r *ProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+	query := `
+		UPDATE profiles
+		SET    avatar_url = $2
+		WHERE  user_id = $1
+		  AND  deleted_at IS NULL`
+
+	res, err := r.exec.ExecContext(ctx, query, userID, avatarURL)
+	if err != nil {
+		return commonapperr.MapPostgresError(err, "update avatar")
+	}
+
+	affected, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("update avatar rows affected: %w", err)
+	}
+	if affected == 0 {
+		return domain.ErrProfileNotFound
+	}
+	return nil
+}
+
+func (r *ProfileRepository) scanProfile(row *sql.Row) (*entity.Profile, error) {
+	var p entity.Profile
+	err := row.Scan(
+		&p.UserID,
+		&p.Username,
+		&p.DisplayName,
+		&p.FirstName,
+		&p.LastName,
+		&p.BirthDate,
+		&p.AvatarURL,
+		&p.Bio,
+		&p.TelegramLink,
+		&p.IsPrivate,
+		&p.CreatedAt,
+		&p.UpdatedAt,
+		&p.DeletedAt,
+	)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, domain.ErrProfileNotFound
+		}
+		return nil, commonapperr.MapPostgresError(err, "scan profile")
+	}
+	return &p, nil
 }

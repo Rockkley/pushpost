@@ -15,7 +15,13 @@ import (
 	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
 )
 
-const userIDHeader = "X-User-ID"
+const (
+	userIDHeader  = "X-User-ID"
+	maxAvatarSize = 5 << 20 // 5 MB
+	// maxMemory для ParseMultipartForm — сколько держать в RAM до сброса на диск.
+	// Для аватаров 5 MB в RAM приемлемо.
+	avatarFormMemory = 5 << 20
+)
 
 type ProfileHandler struct {
 	uc domain.ProfileUseCaseInterface
@@ -36,7 +42,6 @@ func (h *ProfileHandler) GetByUsername(w http.ResponseWriter, r *http.Request) e
 		if errors.Is(err, domain.ErrProfileNotFound) {
 			return commonapperr.NotFound("profile_not_found", "profile not found")
 		}
-
 		return commonapperr.Service("failed to get profile", err)
 	}
 
@@ -44,14 +49,9 @@ func (h *ProfileHandler) GetByUsername(w http.ResponseWriter, r *http.Request) e
 }
 
 func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error {
-	userIDRaw := strings.TrimSpace(r.Header.Get(userIDHeader))
-	if userIDRaw == "" {
-		return commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
-	}
-
-	userID, err := uuid.Parse(userIDRaw)
+	userID, err := requireUserID(r)
 	if err != nil {
-		return commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid X-User-ID")
+		return err
 	}
 
 	var body struct {
@@ -94,11 +94,63 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 		if errors.Is(err, domain.ErrProfileNotFound) {
 			return commonapperr.NotFound("profile_not_found", "profile not found")
 		}
-
 		return commonapperr.Service("failed to update profile", err)
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "profile updated"})
+}
+
+// UploadAvatar принимает multipart/form-data с полем "avatar".
+// Лимит — 5 MB. Разрешённые форматы: JPEG, PNG, WebP.
+func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) error {
+	userID, err := requireUserID(r)
+	if err != nil {
+		return err
+	}
+
+	// Ограничиваем размер тела до maxAvatarSize + немного для накладных расходов multipart.
+	r.Body = http.MaxBytesReader(w, r.Body, maxAvatarSize+1024)
+
+	if err = r.ParseMultipartForm(avatarFormMemory); err != nil {
+		return commonapperr.Validation(
+			commonapperr.CodeFieldInvalid,
+			"avatar",
+			"failed to parse form; maximum file size is 5 MB",
+		)
+	}
+
+	file, header, err := r.FormFile("avatar")
+	if err != nil {
+		return commonapperr.Validation(
+			commonapperr.CodeFieldRequired,
+			"avatar",
+			"avatar field is required",
+		)
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+
+	avatarURL, err := h.uc.UploadAvatar(r.Context(), userID, file, header.Size, contentType)
+	if err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL})
+}
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+func requireUserID(r *http.Request) (uuid.UUID, error) {
+	raw := strings.TrimSpace(r.Header.Get(userIDHeader))
+	if raw == "" {
+		return uuid.Nil, commonapperr.Unauthorized(commonapperr.CodeUnauthorized, "missing user id")
+	}
+	id, err := uuid.Parse(raw)
+	if err != nil {
+		return uuid.Nil, commonapperr.BadRequest(commonapperr.CodeFieldInvalid, "invalid X-User-ID")
+	}
+	return id, nil
 }
 
 func normalizeOptional(v string) *string {
@@ -106,7 +158,6 @@ func normalizeOptional(v string) *string {
 	if v == "" {
 		return nil
 	}
-
 	return &v
 }
 
@@ -114,7 +165,6 @@ func parseBirthDate(value string) (*time.Time, error) {
 	if value == "" {
 		return nil, nil
 	}
-
 	parsed, err := time.Parse("2006-01-02", value)
 	if err != nil {
 		return nil, commonapperr.Validation(
@@ -123,7 +173,6 @@ func parseBirthDate(value string) (*time.Time, error) {
 			"birth_date must be in YYYY-MM-DD format",
 		)
 	}
-
 	if parsed.After(time.Now()) {
 		return nil, commonapperr.Validation(
 			commonapperr.CodeFieldInvalid,
@@ -131,7 +180,6 @@ func parseBirthDate(value string) (*time.Time, error) {
 			"birth_date cannot be in the future",
 		)
 	}
-
 	return &parsed, nil
 }
 
@@ -139,22 +187,17 @@ func validateProfileFields(profile *entity.Profile) error {
 	if profile.DisplayName != nil && len(*profile.DisplayName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "display_name", "display_name is too long")
 	}
-
 	if profile.FirstName != nil && len(*profile.FirstName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "first_name", "first_name is too long")
 	}
-
 	if profile.LastName != nil && len(*profile.LastName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "last_name", "last_name is too long")
 	}
-
 	if profile.Bio != nil && len(*profile.Bio) > 500 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "bio", "bio is too long")
 	}
-
 	if profile.TelegramLink != nil && len(*profile.TelegramLink) > 255 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "telegram_link", "telegram_link is too long")
 	}
-
 	return nil
 }

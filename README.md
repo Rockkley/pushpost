@@ -15,8 +15,8 @@ PushPost - это backend-платформа социальной сети
 ## 🛠 Технологический стек
 
 - **Go**
-- **Chi** (HTTP routing)
-- **gRPC / Protobuf**
-- **PostgreSQL / Redis / Kafka**
+- **Chi**
+- **REST API / gRPC / Protobuf**
+- **PostgreSQL / Redis / Kafka / Minio**
 - **Docker / Docker Compose**
 - **Prometheus / Grafana**

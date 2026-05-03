@@ -16,6 +16,7 @@ import (
 	"github.com/rockkley/pushpost/services/profile_service/internal/domain/usecase"
 	"github.com/rockkley/pushpost/services/profile_service/internal/kafka"
 	repopg "github.com/rockkley/pushpost/services/profile_service/internal/repository/postgres"
+	miniostg "github.com/rockkley/pushpost/services/profile_service/internal/storage/minio"
 	httptransport "github.com/rockkley/pushpost/services/profile_service/internal/transport"
 	grpctransport "github.com/rockkley/pushpost/services/profile_service/internal/transport/grpc"
 	profilehttp "github.com/rockkley/pushpost/services/profile_service/internal/transport/http"
@@ -39,12 +40,29 @@ func New(cfg *config.Config, log *slog.Logger) (*App, error) {
 	})
 
 	if err != nil {
-
 		return nil, fmt.Errorf("connect db: %w", err)
 	}
 
+	// Object storage
+	minioStorage, err := miniostg.New(miniostg.Config{
+		Endpoint:        cfg.Storage.Endpoint,
+		AccessKeyID:     cfg.Storage.AccessKeyID,
+		SecretAccessKey: cfg.Storage.SecretAccessKey,
+		BucketName:      cfg.Storage.BucketName,
+		UseSSL:          cfg.Storage.UseSSL,
+		PublicBaseURL:   cfg.Storage.PublicBaseURL,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("init object storage: %w", err)
+	}
+
+	if err = minioStorage.EnsureBucket(context.Background()); err != nil {
+		return nil, fmt.Errorf("ensure storage bucket: %w", err)
+	}
+
 	profileRepo := repopg.NewProfileRepository(db)
-	uc := usecase.NewProfileUseCase(profileRepo)
+	uc := usecase.NewProfileUseCase(profileRepo, *minioStorage, minioStorage.KeyFromURL)
 
 	userCreatedProcessor := kafka.NewUserCreatedProcessor(uc, log)
 	router := kafka.NewRouter(userCreatedProcessor, log)
@@ -83,7 +101,6 @@ func (a *App) Run(ctx context.Context) error {
 	lis, err := net.Listen("tcp", a.grpcAddr)
 
 	if err != nil {
-
 		return fmt.Errorf("grpc listen: %w", err)
 	}
 
@@ -91,7 +108,6 @@ func (a *App) Run(ctx context.Context) error {
 
 	go func() {
 		a.log.Info("profile gRPC server started", slog.String("addr", a.grpcAddr))
-
 		if err := a.grpcSrv.Serve(lis); err != nil {
 			serverErr <- err
 		}
@@ -99,25 +115,26 @@ func (a *App) Run(ctx context.Context) error {
 
 	go func() {
 		a.log.Info("profile HTTP server started", slog.String("addr", a.httpAddr))
-		if err := a.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+
+		if err = a.httpSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()
 
 	go func() {
 		a.log.Info("profile kafka consumer started")
-		if err := a.consumer.Run(ctx); err != nil {
+		if err = a.consumer.Run(ctx); err != nil {
 			serverErr <- err
 		}
 	}()
 
 	select {
-	case err := <-serverErr:
-
+	case err = <-serverErr:
 		return err
 	case <-ctx.Done():
 		a.log.Info("profile service shutting down")
 		a.grpcSrv.GracefulStop()
+
 		if err = a.httpClose(context.Background()); err != nil {
 			return fmt.Errorf("shutdown http server: %w", err)
 		}

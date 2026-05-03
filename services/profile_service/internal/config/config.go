@@ -13,6 +13,7 @@ type Config struct {
 	GRPC     GRPCConfig
 	Database DatabaseConfig
 	Kafka    KafkaConfig
+	Storage  StorageConfig
 }
 
 type HTTPConfig struct {
@@ -37,6 +38,15 @@ type KafkaConfig struct {
 	BrokersRaw string `env:"KAFKA_BROKERS"  env-default:"kafka:9092"`
 	Topic      string `env:"KAFKA_TOPIC"    env-required:"true"`
 	GroupID    string `env:"KAFKA_GROUP_ID" env-required:"true"`
+}
+
+type StorageConfig struct {
+	Endpoint        string `env:"STORAGE_ENDPOINT"         env-required:"true"`
+	AccessKeyID     string `env:"STORAGE_ACCESS_KEY_ID"    env-required:"true"`
+	SecretAccessKey string `env:"STORAGE_SECRET_ACCESS_KEY" env-required:"true"`
+	BucketName      string `env:"STORAGE_BUCKET_NAME"      env-default:"avatars"`
+	UseSSL          bool   `env:"STORAGE_USE_SSL"          env-default:"false"`
+	PublicBaseURL   string `env:"STORAGE_PUBLIC_BASE_URL"  env-required:"true"`
 }
 
 func Load() (*Config, error) {
