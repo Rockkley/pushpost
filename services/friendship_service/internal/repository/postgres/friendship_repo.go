@@ -123,6 +123,23 @@ func (r *friendshipRepo) GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]
 	return ids, nil
 }
 
+func (r *friendshipRepo) AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error) {
+	u1, u2 := orderUUIDs(user1, user2)
+
+	query := `SELECT EXISTS (SELECT 1 FROM friendships WHERE user1_id = $1 AND user2_id = $2)`
+
+	var exists bool
+
+	err := r.exec.QueryRowContext(ctx, query, u1, u2).Scan(&exists)
+
+	if err != nil {
+
+		return false, commonapperr.MapPostgresError(err, "check if users are friends")
+	}
+
+	return exists, nil
+}
+
 func orderUUIDs(a, b uuid.UUID) (uuid.UUID, uuid.UUID) {
 	if bytes.Compare(a[:], b[:]) < 0 {
 		return a, b

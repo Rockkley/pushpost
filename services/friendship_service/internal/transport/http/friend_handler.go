@@ -222,14 +222,14 @@ func (h *FriendshipHandler) GetRelationship(w http.ResponseWriter, r *http.Reque
 
 func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.Request) error {
 	receiverID, err := commontransport.RequireUserID(r)
-	if err != nil {
 
+	if err != nil {
 		return err
 	}
 
 	reqs, err := h.uc.GetIncomingRequests(r.Context(), receiverID)
-	if err != nil {
 
+	if err != nil {
 		return err
 	}
 
@@ -252,5 +252,116 @@ func (h *FriendshipHandler) GetIncomingRequests(w http.ResponseWriter, r *http.R
 	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
 		"requests": items,
 		"count":    len(items),
+	})
+}
+
+func (h *FriendshipHandler) GetOutgoingRequests(w http.ResponseWriter, r *http.Request) error {
+	senderID, err := commontransport.RequireUserID(r)
+
+	if err != nil {
+		return err
+	}
+
+	reqs, err := h.uc.GetOutgoingRequests(r.Context(), senderID)
+
+	if err != nil {
+		return err
+	}
+
+	type item struct {
+		RequestID  string `json:"request_id"`
+		ReceiverID string `json:"receiver_id"`
+		CreatedAt  string `json:"created_at"`
+	}
+
+	items := make([]item, 0, len(reqs))
+
+	for _, req := range reqs {
+		items = append(items, item{
+			RequestID:  req.ID.String(),
+			ReceiverID: req.ReceiverID.String(),
+			CreatedAt:  req.CreatedAt.UTC().Format(time.RFC3339),
+		})
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
+		"requests": items,
+		"count":    len(items),
+	})
+}
+
+func (h *FriendshipHandler) BlockUser(w http.ResponseWriter, r *http.Request) error {
+	userID, err := commontransport.RequireUserID(r)
+	if err != nil {
+		return err
+	}
+
+	targetID, err := commontransport.ParsePathUUID(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	if err = h.uc.BlockUser(r.Context(), userID, targetID); err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusCreated, map[string]string{"message": "user blocked"})
+}
+
+func (h *FriendshipHandler) UnblockUser(w http.ResponseWriter, r *http.Request) error {
+	userID, err := commontransport.RequireUserID(r)
+	if err != nil {
+		return err
+	}
+
+	targetID, err := commontransport.ParsePathUUID(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	if err = h.uc.UnblockUser(r.Context(), userID, targetID); err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "user unblocked"})
+}
+
+func (h *FriendshipHandler) AreBlocked(w http.ResponseWriter, r *http.Request) error {
+	userID, err := commontransport.RequireUserID(r)
+	if err != nil {
+		return err
+	}
+
+	targetID, err := commontransport.ParsePathUUID(r, "userID")
+	if err != nil {
+		return err
+	}
+
+	blocked, err := h.uc.AreBlocked(r.Context(), userID, targetID)
+	if err != nil {
+		return err
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]bool{"are_blocked": blocked})
+}
+
+func (h *FriendshipHandler) GetBlockedUsers(w http.ResponseWriter, r *http.Request) error {
+	userID, err := commontransport.RequireUserID(r)
+	if err != nil {
+		return err
+	}
+
+	blockedIDs, err := h.uc.GetBlockedUserIDs(r.Context(), userID)
+	if err != nil {
+		return err
+	}
+
+	if blockedIDs == nil {
+		blockedIDs = []uuid.UUID{}
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, map[string]any{
+		"blocked_user_ids": blockedIDs,
+		"count":            len(blockedIDs),
 	})
 }

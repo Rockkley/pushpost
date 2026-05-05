@@ -32,6 +32,10 @@ func NewRouter(log *slog.Logger, h *myHTTP.FriendshipHandler) *chi.Mux {
 	r.Get("/friends", handlerhttp.MakeHandler(h.GetFriendIDs))
 	r.Get("/friends/{userID}/status", handlerhttp.MakeHandler(h.AreFriends))
 	r.Get("/friends/{userID}/relationship", handlerhttp.MakeHandler(h.GetRelationship))
+	r.Post("/blocks/{userID}", handlerhttp.MakeHandler(h.BlockUser))
+	r.Delete("/blocks/{userID}", handlerhttp.MakeHandler(h.UnblockUser))
+	r.Get("/blocks", handlerhttp.MakeHandler(h.GetBlockedUsers))
+	r.Post("/blocks/{userID}/check", handlerhttp.MakeHandler(h.AreBlocked))
 
 	return r
 }

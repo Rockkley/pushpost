@@ -25,33 +25,35 @@ func NewFriendshipUseCase(uow domain.UnitOfWork) *FriendshipUseCase {
 }
 
 func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiverID uuid.UUID) error {
-	if senderID == receiverID {
 
+	if senderID == receiverID {
 		return apperr.CannotBefriendSelf()
+	}
+
+	if areBlocked, err := uc.uow.Blocks().Exists(ctx, receiverID, senderID); err != nil {
+		return err
+	} else if areBlocked {
+		return apperr.UserBlocked()
 	}
 
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		alreadyFriends, err := tx.Friendships().Exists(ctx, senderID, receiverID)
 
 		if err != nil {
-
 			return err
 		}
 
 		if alreadyFriends {
-
 			return apperr.AlreadyFriends()
 		}
 
 		reqExists, err := tx.Requests().FindPendingBetween(ctx, senderID, receiverID)
 
 		if err != nil {
-
 			return err
 		}
 
 		if reqExists != nil {
-
 			return apperr.FriendRequestExists()
 		}
 
@@ -60,12 +62,10 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 		)
 
 		if err != nil {
-
 			return err
 		}
 
 		if onCooldown {
-
 			return apperr.RequestCooldown()
 		}
 
@@ -77,7 +77,6 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 		}
 
 		if err = tx.Requests().Create(ctx, &req); err != nil {
-
 			return err
 		}
 
@@ -92,9 +91,9 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 	})
 
 	if err != nil {
-
 		return err
 	}
+
 	ctxlog.From(ctx).With(
 		slog.String("op", "FriendshipUseCase.SendRequest"),
 		slog.String("sender_id", senderID.String()),
@@ -106,17 +105,21 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 
 func (uc *FriendshipUseCase) GetFriendshipStatus(ctx context.Context, viewerID, targetID uuid.UUID) (*entity.FriendshipStatus, error) {
 	areFriends, err := uc.uow.Friendships().Exists(ctx, viewerID, targetID)
+
 	if err != nil {
 		return nil, err
 	}
+
 	if areFriends {
 		return &entity.FriendshipStatus{AreFriends: true}, nil
 	}
 
 	req, err := uc.uow.Requests().FindPendingBetween(ctx, viewerID, targetID)
+
 	if err != nil {
 		return nil, err
 	}
+
 	if req == nil {
 		return nil, nil
 	}
@@ -131,7 +134,6 @@ func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, send
 	slog.Debug("FriendshipUseCase Accept Request")
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Requests().UpdateStatus(ctx, senderID, receiverID, entity.ReqStatusAccepted); err != nil {
-
 			return err
 		}
 
@@ -142,7 +144,6 @@ func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, send
 		}
 
 		if err := tx.Friendships().Create(ctx, &friendship); err != nil {
-
 			return err
 		}
 
@@ -173,7 +174,6 @@ func (uc *FriendshipUseCase) AcceptRequest(ctx context.Context, receiverID, send
 func (uc *FriendshipUseCase) RejectRequest(ctx context.Context, receiverID, senderID uuid.UUID) error {
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Requests().UpdateStatus(ctx, senderID, receiverID, entity.ReqStatusRejected); err != nil {
-
 			return err
 		}
 
@@ -187,7 +187,6 @@ func (uc *FriendshipUseCase) RejectRequest(ctx context.Context, receiverID, send
 	})
 
 	if err != nil {
-
 		return err
 	}
 
@@ -203,7 +202,6 @@ func (uc *FriendshipUseCase) RejectRequest(ctx context.Context, receiverID, send
 func (uc *FriendshipUseCase) CancelRequest(ctx context.Context, senderID, receiverID uuid.UUID) error {
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Requests().UpdateStatus(ctx, senderID, receiverID, entity.ReqStatusCancelled); err != nil {
-
 			return err
 		}
 
@@ -217,7 +215,6 @@ func (uc *FriendshipUseCase) CancelRequest(ctx context.Context, senderID, receiv
 	})
 
 	if err != nil {
-
 		return err
 	}
 
@@ -233,7 +230,6 @@ func (uc *FriendshipUseCase) CancelRequest(ctx context.Context, senderID, receiv
 func (uc *FriendshipUseCase) DeleteFriendship(ctx context.Context, userID, friendID uuid.UUID) error {
 	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
 		if err := tx.Friendships().Delete(ctx, userID, friendID); err != nil {
-
 			return err
 		}
 
@@ -247,7 +243,6 @@ func (uc *FriendshipUseCase) DeleteFriendship(ctx context.Context, userID, frien
 	})
 
 	if err != nil {
-
 		return err
 	}
 
@@ -269,18 +264,85 @@ func (uc *FriendshipUseCase) AreFriends(ctx context.Context, user1, user2 uuid.U
 	return uc.uow.Friendships().Exists(ctx, user1, user2)
 }
 
-func (uc *FriendshipUseCase) GetIncomingRequests(
-	ctx context.Context,
-	userID uuid.UUID,
-) ([]*entity.FriendshipRequest, error) {
+func (uc *FriendshipUseCase) GetIncomingRequests(ctx context.Context, userID uuid.UUID) ([]*entity.FriendshipRequest, error) {
 	return uc.uow.Requests().GetIncoming(ctx, userID)
+}
+
+func (uc *FriendshipUseCase) GetOutgoingRequests(ctx context.Context, userID uuid.UUID) ([]*entity.FriendshipRequest, error) {
+	return uc.uow.Requests().GetOutgoing(ctx, userID)
+}
+
+func (uc *FriendshipUseCase) BlockUser(ctx context.Context, userID, targetID uuid.UUID) error {
+	if userID == targetID {
+		return apperr.CannotBlockSelf()
+	}
+
+	err := uc.uow.Do(ctx, func(tx domain.Tx) error {
+		block := &entity.Block{UserID: userID, TargetID: targetID}
+
+		if err := tx.Blocks().Create(ctx, block); err != nil {
+			return err
+		}
+
+		areFriends, err := tx.Friendships().Exists(ctx, userID, targetID)
+
+		if err != nil {
+			return err
+		}
+
+		if areFriends {
+			if err = tx.Friendships().Delete(ctx, userID, targetID); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+
+	ctxlog.From(ctx).With(
+		slog.String("op", "FriendshipUseCase.BlockUser"),
+		slog.String("user_id", userID.String()),
+		slog.String("target_id", targetID.String()),
+	).Info("user blocked")
+
+	return nil
+}
+
+func (uc *FriendshipUseCase) UnblockUser(ctx context.Context, userID, targetID uuid.UUID) error {
+	err := uc.uow.Blocks().Delete(ctx, userID, targetID)
+
+	if err != nil {
+		return err
+	}
+
+	ctxlog.From(ctx).With(
+		slog.String("op", "FriendshipUseCase.UnblockUser"),
+		slog.String("user_id", userID.String()),
+		slog.String("target_id", targetID.String()),
+	).Info("user unblocked")
+
+	return nil
+}
+
+func (uc *FriendshipUseCase) AreBlocked(ctx context.Context, userID, targetID uuid.UUID) (bool, error) {
+	return uc.uow.Blocks().Exists(ctx, userID, targetID)
+}
+
+func (uc *FriendshipUseCase) GetBlockedUserIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	return uc.uow.Blocks().GetBlockedUserIDs(ctx, userID)
 }
 
 func marshalEnvelope(eventType string, payload any) ([]byte, error) {
 	inner, err := json.Marshal(payload)
+
 	if err != nil {
 		return nil, commonapperr.Internal("marshal outbox payload", err)
 	}
+
 	type envelope struct {
 		EventType string          `json:"event_type"`
 		Payload   json.RawMessage `json:"payload"`
@@ -297,6 +359,7 @@ func marshalEnvelope(eventType string, payload any) ([]byte, error) {
 
 func insertOutboxEvent(ctx context.Context, tx domain.Tx, aggregateID, aggregateType, eventType string, payload any) error {
 	b, err := marshalEnvelope(eventType, payload)
+
 	if err != nil {
 		return err
 	}

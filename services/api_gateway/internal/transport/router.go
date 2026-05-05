@@ -81,6 +81,8 @@ func NewRouter(
 		r.Handle("/profiles/*", http.HandlerFunc(p.Profile.ServeHTTP))
 		r.Handle("/notifications", http.HandlerFunc(p.Notification.ServeHTTP))
 		r.Handle("/notifications/*", http.HandlerFunc(p.Notification.ServeHTTP))
+		r.Handle("/blocks", http.HandlerFunc(p.Friendship.ServeHTTP))
+		r.Handle("/blocks/*", http.HandlerFunc(p.Friendship.ServeHTTP))
 
 	})
 

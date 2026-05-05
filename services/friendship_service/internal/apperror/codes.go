@@ -8,4 +8,8 @@ const (
 	CodeFriendRequestNotFound   = "friend_request_not_found"
 	CodeFriendRequestNotPending = "friend_request_not_pending"
 	CodeRequestCooldown         = "request_cooldown"
+	CodeCannotBlockSelf         = "cannot_block_self"
+	CodeAlreadyBlocked          = "already_blocked"
+	CodeBlockNotFound           = "block_not_found"
+	CodeUserBlocked             = "user_blocked"
 )

@@ -16,14 +16,15 @@ var _ domain.Tx = (*uowTx)(nil)
 type uowTx struct {
 	requests    repository.FriendshipRequestRepository
 	friendships repository.FriendshipRepository
+	blocks      repository.BlockRepository
 	outbox      outbox.WriterInterface
 }
 
-func (u *uowTx) Requests() repository.FriendshipRequestRepository {
-	return u.requests
-}
+func (u *uowTx) Requests() repository.FriendshipRequestRepository { return u.requests }
 
 func (u *uowTx) Friendships() repository.FriendshipRepository { return u.friendships }
+
+func (u *uowTx) Blocks() repository.BlockRepository { return u.blocks }
 
 func (u *uowTx) Outbox() outbox.WriterInterface { return u.outbox }
 
@@ -48,6 +49,7 @@ func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	t := &uowTx{
 		requests:    NewFriendshipRequestRepository(sqlTx),
 		friendships: NewFriendshipRepository(sqlTx),
+		blocks:      NewBlockRepository(sqlTx),
 		outbox:      outboxpg.NewWriterRepository(sqlTx),
 	}
 
@@ -71,4 +73,8 @@ func (u *UnitOfWork) Requests() repository.FriendshipRequestRepository {
 
 func (u *UnitOfWork) Friendships() repository.FriendshipRepository {
 	return NewFriendshipRepository(u.db)
+}
+
+func (u *UnitOfWork) Blocks() repository.BlockRepository {
+	return NewBlockRepository(u.db)
 }

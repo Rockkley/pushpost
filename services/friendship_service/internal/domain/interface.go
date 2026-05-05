@@ -18,16 +18,23 @@ type FriendshipUseCase interface {
 	AreFriends(ctx context.Context, user1, user2 uuid.UUID) (bool, error)
 	GetFriendshipStatus(ctx context.Context, viewerID, targetID uuid.UUID) (*entity.FriendshipStatus, error)
 	GetIncomingRequests(ctx context.Context, userID uuid.UUID) ([]*entity.FriendshipRequest, error)
+	GetOutgoingRequests(ctx context.Context, userID uuid.UUID) ([]*entity.FriendshipRequest, error)
+	BlockUser(ctx context.Context, userID, targetID uuid.UUID) error
+	UnblockUser(ctx context.Context, userID, targetID uuid.UUID) error
+	AreBlocked(ctx context.Context, userID, targetID uuid.UUID) (bool, error)
+	GetBlockedUserIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 type Tx interface {
 	Requests() repository.FriendshipRequestRepository
 	Friendships() repository.FriendshipRepository
 	Outbox() outbox.WriterInterface
+	Blocks() repository.BlockRepository
 }
 
 type UnitOfWork interface {
 	Do(ctx context.Context, fn func(tx Tx) error) error
 	Requests() repository.FriendshipRequestRepository
 	Friendships() repository.FriendshipRepository
+	Blocks() repository.BlockRepository
 }

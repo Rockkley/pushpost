@@ -32,6 +32,22 @@ func RequestCooldown() apperror.AppError {
 	return apperror.BadRequest(CodeRequestCooldown, "you must wait before sending another request to this user")
 }
 
+func CannotBlockSelf() apperror.AppError {
+	return apperror.BadRequest(CodeCannotBlockSelf, "cannot block yourself")
+}
+
+func AlreadyBlocked() apperror.AppError {
+	return apperror.BadRequest(CodeAlreadyBlocked, "user is already blocked")
+}
+
+func BlockNotFound() apperror.AppError {
+	return apperror.NotFound(CodeBlockNotFound, "block not found")
+}
+
+func UserBlocked() apperror.AppError {
+	return apperror.BadRequest(CodeUserBlocked, "you cannot perform this action because the user has blocked you")
+}
+
 // -- Postgres constraint mapper
 
 func MapConstraint(constraintName string) apperror.AppError {
@@ -44,6 +60,11 @@ func MapConstraint(constraintName string) apperror.AppError {
 		return FriendRequestExists()
 	case "friendships_ordered_users":
 		return apperror.Internal("friendship ordering constraint violated", nil)
+	case "chk_block_not_self":
+		return CannotBlockSelf()
+	case "blocks_pkey":
+		return AlreadyBlocked()
+
 	default:
 		return nil // return nil = pass control to generic mapper
 	}
