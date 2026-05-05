@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/google/uuid"
+	"github.com/rockkley/pushpost/services/profile_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
 	"io"
 )
@@ -15,4 +16,5 @@ type ProfileUseCaseInterface interface {
 	CreateProfile(ctx context.Context, profile *entity.Profile) error
 	UpdateProfile(ctx context.Context, profile *entity.Profile) error
 	UploadAvatar(ctx context.Context, userID uuid.UUID, r io.Reader, size int64, contentType string) (string, error)
+	Search(ctx context.Context, filter *dto.SearchProfilesQuery) ([]*entity.Profile, error)
 }

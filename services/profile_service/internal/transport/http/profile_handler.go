@@ -3,7 +3,9 @@ package http
 import (
 	"encoding/json"
 	"errors"
+	"github.com/rockkley/pushpost/services/profile_service/internal/domain/dto"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -58,6 +60,8 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 		DisplayName  string `json:"display_name"`
 		FirstName    string `json:"first_name"`
 		LastName     string `json:"last_name"`
+		City         string `json:"city"`
+		Country      string `json:"country"`
 		BirthDate    string `json:"birth_date"`
 		AvatarURL    string `json:"avatar_url"`
 		Bio          string `json:"bio"`
@@ -79,6 +83,8 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 		DisplayName:  normalizeOptional(body.DisplayName),
 		FirstName:    normalizeOptional(body.FirstName),
 		LastName:     normalizeOptional(body.LastName),
+		City:         normalizeOptional(body.City),
+		Country:      normalizeOptional(body.Country),
 		BirthDate:    birthDate,
 		AvatarURL:    normalizeOptional(body.AvatarURL),
 		Bio:          normalizeOptional(body.Bio),
@@ -98,6 +104,75 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"message": "profile updated"})
+}
+
+func (h *ProfileHandler) Search(w http.ResponseWriter, r *http.Request) error {
+	username := strings.TrimSpace(r.URL.Query().Get("username"))
+	fullName := strings.TrimSpace(r.URL.Query().Get("full_name"))
+	firstName := strings.TrimSpace(r.URL.Query().Get("first_name"))
+	lastName := strings.TrimSpace(r.URL.Query().Get("last_name"))
+	city := strings.TrimSpace(r.URL.Query().Get("city"))
+	country := strings.TrimSpace(r.URL.Query().Get("country"))
+	ageRaw := strings.TrimSpace(r.URL.Query().Get("age"))
+	limitRaw := strings.TrimSpace(r.URL.Query().Get("limit"))
+	offsetRaw := strings.TrimSpace(r.URL.Query().Get("offset"))
+
+	if username == "" && fullName == "" && firstName == "" && lastName == "" && ageRaw == "" && city == "" && country == "" {
+		return commonapperr.BadRequest(commonapperr.CodeFieldRequired, "at least one search filter is required")
+	}
+
+	var age *int
+
+	if ageRaw != "" {
+		value, err := strconv.Atoi(ageRaw)
+		if err != nil || value < 0 {
+			return commonapperr.Validation(commonapperr.CodeFieldInvalid, "age", "age must be a non-negative integer")
+		}
+		age = &value
+	}
+
+	limit := dto.DefaultSearchLimit
+	if limitRaw != "" {
+		value, err := strconv.Atoi(limitRaw)
+		if err != nil || value <= 0 || value > dto.MaxSearchLimit {
+			return commonapperr.Validation(
+				commonapperr.CodeFieldInvalid,
+				"limit",
+				"limit must be an integer between 1 and 100",
+			)
+		}
+		limit = value
+	}
+
+	offset := 0
+	if offsetRaw != "" {
+		value, err := strconv.Atoi(offsetRaw)
+		if err != nil || value < 0 {
+			return commonapperr.Validation(commonapperr.CodeFieldInvalid, "offset", "offset must be a non-negative integer")
+		}
+		offset = value
+	}
+
+	filter := &dto.SearchProfilesQuery{
+		Username:  username,
+		FullName:  fullName,
+		FirstName: firstName,
+		LastName:  lastName,
+		Age:       age,
+		City:      city,
+		Country:   country,
+		Limit:     limit,
+		Offset:    offset,
+	}
+	filter.NormalizePagination()
+
+	profiles, err := h.uc.Search(r.Context(), filter)
+
+	if err != nil {
+		return commonapperr.Service("failed to search profiles", err)
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, profiles)
 }
 
 // UploadAvatar принимает multipart/form-data с полем "avatar".
@@ -192,6 +267,12 @@ func validateProfileFields(profile *entity.Profile) error {
 	}
 	if profile.LastName != nil && len(*profile.LastName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "last_name", "last_name is too long")
+	}
+	if profile.City != nil && len(*profile.City) > 120 {
+		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "city", "city is too long")
+	}
+	if profile.Country != nil && len(*profile.Country) > 120 {
+		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "country", "country is too long")
 	}
 	if profile.Bio != nil && len(*profile.Bio) > 500 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "bio", "bio is too long")

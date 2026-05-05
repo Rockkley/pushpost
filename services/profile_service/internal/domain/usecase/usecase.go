@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"github.com/rockkley/pushpost/services/profile_service/internal/domain/dto"
 	"io"
 	"log/slog"
 
@@ -50,6 +51,10 @@ func (u *ProfileUseCase) UpdateProfile(ctx context.Context, profile *entity.Prof
 	return u.profileRepo.Update(ctx, profile)
 }
 
+func (u *ProfileUseCase) Search(ctx context.Context, filter *dto.SearchProfilesQuery) ([]*entity.Profile, error) {
+	return u.profileRepo.Search(ctx, filter)
+}
+
 func (u *ProfileUseCase) UploadAvatar(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -71,8 +76,8 @@ func (u *ProfileUseCase) UploadAvatar(
 		)
 	}
 
-	// Получаем текущий профиль, чтобы удалить старый аватар после загрузки.
 	existing, err := u.profileRepo.FindByUserID(ctx, userID)
+
 	if err != nil {
 		return "", err
 	}
@@ -80,13 +85,15 @@ func (u *ProfileUseCase) UploadAvatar(
 	key := fmt.Sprintf("avatars/%s/%s%s", userID, uuid.New(), ext)
 
 	avatarURL, err := u.storage.Upload(ctx, key, r, size, contentType)
+
 	if err != nil {
 		log.Error("failed to upload avatar to object storage", slog.Any("error", err))
+
 		return "", commonapperr.Service("failed to upload avatar", err)
 	}
 
 	if err = u.profileRepo.UpdateAvatar(ctx, userID, avatarURL); err != nil {
-		// Загрузка прошла, но БД не обновилась — удаляем осиротевший объект.
+		// Загрузка прошла, но БД не обновилась - удаляем осиротевший объект.
 		if delErr := u.storage.Delete(ctx, key); delErr != nil {
 			log.Error("failed to rollback orphaned avatar",
 				slog.String("key", key),
@@ -96,7 +103,7 @@ func (u *ProfileUseCase) UploadAvatar(
 		return "", err
 	}
 
-	// Удаляем старый аватар best-effort: ошибка не критична.
+	// Удаляем старый аватар best-effort: ошибка не критична. //fixme
 	if existing.AvatarURL != nil {
 		if oldKey := u.keyFromURL(*existing.AvatarURL); oldKey != "" {
 			if delErr := u.storage.Delete(ctx, oldKey); delErr != nil {
@@ -109,5 +116,6 @@ func (u *ProfileUseCase) UploadAvatar(
 	}
 
 	log.Info("avatar uploaded", slog.String("url", avatarURL))
+
 	return avatarURL, nil
 }

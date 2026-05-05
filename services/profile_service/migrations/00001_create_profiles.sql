@@ -7,6 +7,8 @@ CREATE TABLE profiles
     display_name  VARCHAR(60),
     first_name    VARCHAR(60),
     last_name     VARCHAR(60),
+    city          VARCHAR(120),
+    country       VARCHAR(120),
     birth_date    DATE,
     avatar_url    TEXT,
     bio           VARCHAR(500),
@@ -21,6 +23,8 @@ CREATE TABLE profiles
     CONSTRAINT profiles_display_name_length CHECK (display_name IS NULL OR char_length(display_name) BETWEEN 1 AND 60),
     CONSTRAINT profiles_first_name_length CHECK (first_name IS NULL OR char_length(first_name) BETWEEN 1 AND 60),
     CONSTRAINT profiles_last_name_length CHECK (last_name IS NULL OR char_length(last_name) BETWEEN 1 AND 60),
+    CONSTRAINT profiles_city_length CHECK (city IS NULL OR char_length(city) BETWEEN 1 AND 120),
+    CONSTRAINT profiles_country_length CHECK (country IS NULL OR char_length(country) BETWEEN 1 AND 120),
     CONSTRAINT profiles_bio_length CHECK (bio IS NULL OR char_length(bio) <= 500),
     CONSTRAINT profiles_birth_date_not_future CHECK (birth_date IS NULL OR birth_date <= CURRENT_DATE)
 );
@@ -28,6 +32,8 @@ CREATE TABLE profiles
 CREATE UNIQUE INDEX idx_profiles_username_unique ON profiles (LOWER(username)) WHERE deleted_at IS NULL;
 CREATE INDEX idx_profiles_created_at ON profiles (created_at DESC);
 CREATE INDEX idx_profiles_active ON profiles (user_id) WHERE deleted_at IS NULL;
+CREATE INDEX idx_profiles_city_lower ON profiles (LOWER(city)) WHERE deleted_at IS NULL;
+CREATE INDEX idx_profiles_country_lower ON profiles (LOWER(country)) WHERE deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_profiles_updated_at_column()
     RETURNS TRIGGER AS $$

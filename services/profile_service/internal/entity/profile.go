@@ -11,6 +11,8 @@ type Profile struct {
 	DisplayName  *string
 	FirstName    *string
 	LastName     *string
+	City         *string
+	Country      *string
 	BirthDate    *time.Time
 	AvatarURL    *string
 	Bio          *string

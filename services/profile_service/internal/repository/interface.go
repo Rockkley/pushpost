@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"github.com/google/uuid"
+	"github.com/rockkley/pushpost/services/profile_service/internal/domain/dto"
 	"github.com/rockkley/pushpost/services/profile_service/internal/entity"
 )
 
@@ -12,4 +13,5 @@ type ProfileRepositoryInterface interface {
 	Update(ctx context.Context, profile *entity.Profile) error
 	UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error
 	FindByUserID(ctx context.Context, userID uuid.UUID) (*entity.Profile, error)
+	Search(ctx context.Context, filter *dto.SearchProfilesQuery) ([]*entity.Profile, error)
 }
