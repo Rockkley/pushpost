@@ -230,6 +230,7 @@ func (r *ProfileRepository) Search(
 		conditions = append(conditions, "birth_date IS NOT NULL")
 		conditions = append(conditions, "EXTRACT(YEAR FROM AGE(CURRENT_DATE, birth_date)) = $"+strconv.Itoa(idx))
 		args = append(args, *filter.Age)
+		idx++
 	}
 
 	query := `
@@ -258,6 +259,8 @@ func (r *ProfileRepository) Search(
 			&p.DisplayName,
 			&p.FirstName,
 			&p.LastName,
+			&p.City,
+			&p.Country,
 			&p.BirthDate,
 			&p.AvatarURL,
 			&p.Bio,
