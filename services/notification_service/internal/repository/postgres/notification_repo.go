@@ -62,6 +62,7 @@ func (r *notificationRepo) GetForUser(ctx context.Context, userID uuid.UUID, lim
 	}
 
 	defer rows.Close()
+
 	return scanNotifications(rows)
 }
 

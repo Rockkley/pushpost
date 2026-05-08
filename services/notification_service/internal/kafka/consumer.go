@@ -35,6 +35,7 @@ func NewConsumer(brokers []string, groupID string, topics []string, router Route
 		MaxBytes:       10e6,
 		CommitInterval: time.Second,
 	})
+
 	return &Consumer{reader: reader, router: router, log: log.With("component", "notification_consumer")}
 }
 
@@ -43,12 +44,15 @@ func (c *Consumer) Run(ctx context.Context) error {
 		msg, err := c.reader.FetchMessage(ctx)
 		if err != nil {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+
 				return nil
 			}
+
 			return fmt.Errorf("fetch kafka message: %w", err)
 		}
 
 		env := c.decodeEnvelope(msg.Topic, msg.Value)
+
 		if env.EventType == "" || len(env.Payload) == 0 {
 			c.log.Error("cannot decode kafka message, skipping", slog.String("topic", msg.Topic), slog.Int64("offset", msg.Offset))
 			_ = c.reader.CommitMessages(ctx, msg)

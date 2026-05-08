@@ -17,7 +17,6 @@ func NewRouter(handlers *Handlers, log *slog.Logger) *EventRouter {
 func (r *EventRouter) Route(ctx context.Context, topic string, env Envelope) error {
 	eventType := env.EventType
 	if eventType == "" {
-		// Совместимость: часть продюсеров кладёт тип в Kafka-топик, а не в envelope.
 		eventType = topic
 	}
 
@@ -37,6 +36,10 @@ func (r *EventRouter) Route(ctx context.Context, topic string, env Envelope) err
 		return r.handlers.HandleFriendRequestRejected(ctx, env.Payload)
 	case TopicMessageSent:
 		return r.handlers.HandleMessageSent(ctx, env.Payload)
+	case TopicCommentReplied:
+		return r.handlers.HandleCommentReplied(ctx, env.Payload)
+	case TopicCommentMentioned:
+		return r.handlers.HandleCommentMentioned(ctx, env.Payload)
 	default:
 		r.log.Debug("unhandled event type, skipping",
 			slog.String("event_type", eventType),

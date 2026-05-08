@@ -85,22 +85,27 @@ func main() {
 	uow := repopg.NewUnitOfWork(db)
 	feedRepo := repopg.NewFeedRepository(db)
 	postRepo := repopg.NewPostRepository(db)
+	commentsRepo := repopg.NewCommentRepository(db)
 
 	// ── Realtime notifier ─────────────────────────────────────────────────────
 	notifier := realtime.NewRedisStreamsNotifier(rdb, appLog)
 
 	// ── Use case ──────────────────────────────────────────────────────────────
 	uc := usecase.NewPostUseCase(uow, feedRepo, []byte(cfg.Cursor.Secret))
+	commentUC := usecase.NewCommentUseCase(uow, []byte(cfg.Cursor.Secret))
 
 	// ── HTTP handlers ─────────────────────────────────────────────────────────
 	postHandler := myHTTP.NewPostHandler(uc)
+	commentHandler := myHTTP.NewCommentHandler(commentUC)
+
 	sseHandler := myHTTP.NewFeedSSEHandler(rdb)
-	mux := transport.NewRouter(appLog, postHandler, sseHandler)
+	mux := transport.NewRouter(appLog, postHandler, commentHandler, sseHandler)
 
 	// ── Kafka outbox worker ───────────────────────────────────────────────────
 	kafkaPublisher := kafkap.NewPublisher(cfg.Kafka.Brokers(), appLog)
+
 	defer func() {
-		if err := kafkaPublisher.Close(); err != nil {
+		if err = kafkaPublisher.Close(); err != nil {
 			appLog.Error("failed to close kafka publisher", slog.Any("error", err))
 		}
 	}()
@@ -127,6 +132,7 @@ func main() {
 		friendshipClient,
 		feedRepo,
 		postRepo,
+		commentsRepo,
 		notifier,
 		appLog,
 	)

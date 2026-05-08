@@ -5,6 +5,8 @@ const (
 	TopicFriendshipCreated     = "friendship.created"
 	TopicFriendRequestRejected = "friendship_request.rejected"
 	TopicMessageSent           = "message.sent"
+	TopicCommentReplied        = "comment.replied"
+	TopicCommentMentioned      = "comment.mentioned"
 )
 
 var ConsumedTopics = []string{
@@ -12,4 +14,6 @@ var ConsumedTopics = []string{
 	TopicFriendshipCreated,
 	TopicFriendRequestRejected,
 	TopicMessageSent,
+	TopicCommentReplied,
+	TopicCommentMentioned,
 }

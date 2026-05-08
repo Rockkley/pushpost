@@ -23,3 +23,18 @@ type MessageSentPayload struct {
 	ReceiverID string `json:"receiver_id"`
 	CreatedAt  string `json:"created_at"`
 }
+
+type CommentRepliedPayload struct {
+	PostID           string `json:"post_id"`
+	CommentID        string `json:"comment_id"`
+	ParentCommentID  string `json:"parent_comment_id"`
+	ReplyAuthorID    string `json:"reply_author_id"`
+	OriginalAuthorID string `json:"original_author_id"`
+}
+
+type CommentMentionedPayload struct {
+	PostID        string   `json:"post_id"`
+	CommentID     string   `json:"comment_id"`
+	AuthorID      string   `json:"author_id"`
+	MentionedList []string `json:"mentioned_list"`
+}

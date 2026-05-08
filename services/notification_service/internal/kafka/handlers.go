@@ -5,25 +5,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"github.com/google/uuid"
+	"github.com/rockkley/pushpost/clients/profile_grpc"
 	"github.com/rockkley/pushpost/services/notification_service/internal/domain"
 	"github.com/rockkley/pushpost/services/notification_service/internal/entity"
 )
 
 type Handlers struct {
-	uc  domain.NotificationUseCase
-	log *slog.Logger
+	uc            domain.NotificationUseCase
+	log           *slog.Logger
+	profileClient *profile_grpc.Client
 }
 
-func NewHandlers(uc domain.NotificationUseCase, log *slog.Logger) *Handlers {
-	return &Handlers{uc: uc, log: log.With("component", "notification_handlers")}
+func NewHandlers(uc domain.NotificationUseCase, profileClient *profile_grpc.Client, log *slog.Logger) *Handlers {
+	return &Handlers{uc: uc, profileClient: profileClient, log: log.With("component", "notification_handlers")}
 }
-
-// notifID возвращает детерминированный UUID (v5/SHA1) для уведомления.
-// Это обеспечивает идемпотентность при повторной доставке Kafka (at-least-once).
-// При ретрае одного и того же события генерируется тот же UUID →
-// INSERT ON CONFLICT DO NOTHING в репозитории предотвращает дубликат.
 
 func notifID(key string) uuid.UUID {
 	return uuid.NewSHA1(uuid.NameSpaceOID, []byte(key))
@@ -62,27 +60,18 @@ func (h *Handlers) HandleFriendshipCreated(ctx context.Context, payload json.Raw
 	}
 
 	user1ID, err := uuid.Parse(p.User1ID)
-
 	if err != nil {
 		h.log.Warn("invalid user1_id in friendship.created, skipping",
 			slog.String("user1_id", p.User1ID))
-
 		return nil
 	}
 
 	user2ID, err := uuid.Parse(p.User2ID)
-
 	if err != nil {
 		h.log.Warn("invalid user2_id in friendship.created, skipping",
 			slog.String("user2_id", p.User2ID))
-
 		return nil
 	}
-
-	// Два уведомления с разными стабильными ключами.
-	// Суффикс ":user1" / ":user2" разделяет их внутри одного события.
-	// Оба идемпотентны: при ретрае один из них уже может существовать —
-	// ON CONFLICT DO NOTHING тихо пропустит его, второй будет создан.
 
 	notif1 := &entity.Notification{
 		ID:     notifID("friendship.created:" + p.FriendshipID + ":user1"),
@@ -117,11 +106,9 @@ func (h *Handlers) HandleFriendRequestRejected(ctx context.Context, payload json
 	}
 
 	senderID, err := uuid.Parse(p.SenderID)
-
 	if err != nil {
 		h.log.Warn("invalid sender_id in friend_request.rejected, skipping",
 			slog.String("sender_id", p.SenderID))
-
 		return nil
 	}
 
@@ -143,11 +130,9 @@ func (h *Handlers) HandleMessageSent(ctx context.Context, payload json.RawMessag
 	}
 
 	receiverID, err := uuid.Parse(p.ReceiverID)
-
 	if err != nil {
 		h.log.Warn("invalid receiver_id in message.sent, skipping",
 			slog.String("receiver_id", p.ReceiverID))
-
 		return nil
 	}
 
@@ -159,4 +144,60 @@ func (h *Handlers) HandleMessageSent(ctx context.Context, payload json.RawMessag
 		Body:   "У вас новое личное сообщение.",
 		Data:   map[string]string{"message_id": p.MessageID, "sender_id": p.SenderID},
 	})
+}
+
+func (h *Handlers) HandleCommentReplied(ctx context.Context, payload json.RawMessage) error {
+	var p domain.CommentRepliedPayload
+
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("decode comment.replied: %w", err)
+	}
+
+	userID, err := uuid.Parse(p.OriginalAuthorID)
+
+	if err != nil {
+		return nil
+	}
+
+	if p.ReplyAuthorID == p.OriginalAuthorID {
+		return nil
+	}
+	return h.uc.CreateAndDeliver(ctx, &entity.Notification{
+		ID:     notifID("comment.replied:" + p.CommentID + ":" + p.OriginalAuthorID),
+		UserID: userID,
+		Type:   entity.TypeCommentReplied,
+		Title:  "Новый ответ на комментарий",
+		Body:   "Кто-то ответил на ваш комментарий.",
+		Data:   map[string]string{"post_id": p.PostID, "comment_id": p.CommentID, "parent_comment_id": p.ParentCommentID, "reply_author_id": p.ReplyAuthorID},
+	})
+}
+
+func (h *Handlers) HandleCommentMentioned(ctx context.Context, payload json.RawMessage) error {
+	var p domain.CommentMentionedPayload
+	if err := json.Unmarshal(payload, &p); err != nil {
+		return fmt.Errorf("decode comment.mentioned: %w", err)
+	}
+	for _, username := range p.MentionedList {
+		uname := strings.TrimSpace(strings.ToLower(username))
+		if uname == "" || h.profileClient == nil {
+			continue
+		}
+		profile, err := h.profileClient.GetByUsername(ctx, uname)
+		if err != nil {
+			continue
+		}
+		userID, err := uuid.Parse(profile.UserID)
+		if err != nil || userID.String() == p.AuthorID {
+			continue
+		}
+		_ = h.uc.CreateAndDeliver(ctx, &entity.Notification{
+			ID:     notifID("comment.mentioned:" + p.CommentID + ":" + userID.String()),
+			UserID: userID,
+			Type:   entity.TypeCommentMentioned,
+			Title:  "Вас упомянули в комментарии",
+			Body:   "Кто-то упомянул вас в комментарии.",
+			Data:   map[string]string{"post_id": p.PostID, "comment_id": p.CommentID, "author_id": p.AuthorID},
+		})
+	}
+	return nil
 }

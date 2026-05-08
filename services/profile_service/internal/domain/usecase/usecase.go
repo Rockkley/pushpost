@@ -1,9 +1,14 @@
 package usecase
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"github.com/rockkley/pushpost/services/profile_service/internal/domain/dto"
+	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
+	"image"
+	"image/jpeg"
 	"io"
 	"log/slog"
 
@@ -61,7 +66,7 @@ func (u *ProfileUseCase) UploadAvatar(
 	r io.Reader,
 	size int64,
 	contentType string,
-) (string, error) {
+) (string, string, error) {
 	log := ctxlog.From(ctx).With(
 		slog.String("op", "ProfileUseCase.UploadAvatar"),
 		slog.String("user_id", userID.String()),
@@ -69,7 +74,7 @@ func (u *ProfileUseCase) UploadAvatar(
 
 	ext, ok := allowedMimeTypes[contentType]
 	if !ok {
-		return "", commonapperr.Validation(
+		return "", "", commonapperr.Validation(
 			commonapperr.CodeFieldInvalid,
 			"avatar",
 			"unsupported file type; allowed: jpeg, png, webp",
@@ -79,20 +84,45 @@ func (u *ProfileUseCase) UploadAvatar(
 	existing, err := u.profileRepo.FindByUserID(ctx, userID)
 
 	if err != nil {
-		return "", err
+		return "", "", err
+	}
+
+	original, err := io.ReadAll(r)
+
+	if err != nil {
+		return "", "", commonapperr.Service("failed to read avatar", err)
 	}
 
 	key := fmt.Sprintf("avatars/%s/%s%s", userID, uuid.New(), ext)
+	thumbKey := fmt.Sprintf("avatars/%s/%s_thumb.jpg", userID, uuid.New())
 
-	avatarURL, err := u.storage.Upload(ctx, key, r, size, contentType)
+	avatarURL, err := u.storage.Upload(ctx, key, bytes.NewReader(original), size, contentType)
 
 	if err != nil {
 		log.Error("failed to upload avatar to object storage", slog.Any("error", err))
 
-		return "", commonapperr.Service("failed to upload avatar", err)
+		return "", "", commonapperr.Service("failed to upload avatar", err)
 	}
 
-	if err = u.profileRepo.UpdateAvatar(ctx, userID, avatarURL); err != nil {
+	thumb, err := buildThumbnail(original)
+
+	if err != nil {
+		if delErr := u.storage.Delete(ctx, key); delErr != nil {
+			log.Warn("failed to cleanup original avatar after thumb build failure", slog.Any("error", delErr))
+		}
+		return "", "", commonapperr.Validation(commonapperr.CodeFieldInvalid, "avatar", "failed to process avatar image")
+	}
+
+	avatarThumbURL, err := u.storage.Upload(ctx, thumbKey, bytes.NewReader(thumb), int64(len(thumb)), "image/jpeg")
+	if err != nil {
+		if delErr := u.storage.Delete(ctx, key); delErr != nil {
+			log.Warn("failed to cleanup original avatar after thumb upload failure", slog.Any("error", delErr))
+		}
+		return "", "", commonapperr.Service("failed to upload avatar thumbnail", err)
+	}
+
+	if err = u.profileRepo.UpdateAvatar(ctx, userID, avatarURL, avatarThumbURL); err != nil {
+
 		// Загрузка прошла, но БД не обновилась - удаляем осиротевший объект.
 		if delErr := u.storage.Delete(ctx, key); delErr != nil {
 			log.Error("failed to rollback orphaned avatar",
@@ -100,7 +130,11 @@ func (u *ProfileUseCase) UploadAvatar(
 				slog.Any("error", delErr),
 			)
 		}
-		return "", err
+		if delErr := u.storage.Delete(ctx, thumbKey); delErr != nil {
+			log.Error("failed to rollback orphaned avatar thumbnail", slog.String("key", thumbKey), slog.Any("error", delErr))
+		}
+		return "", "", err
+
 	}
 
 	// Удаляем старый аватар best-effort: ошибка не критична. //fixme
@@ -114,8 +148,32 @@ func (u *ProfileUseCase) UploadAvatar(
 			}
 		}
 	}
+	if existing.AvatarThumbURL != nil {
+		if oldKey := u.keyFromURL(*existing.AvatarThumbURL); oldKey != "" {
+			if delErr := u.storage.Delete(ctx, oldKey); delErr != nil {
+				log.Warn("failed to delete old avatar thumbnail", slog.String("old_thumb_key", oldKey), slog.Any("error", delErr))
+			}
+		}
+	}
 
 	log.Info("avatar uploaded", slog.String("url", avatarURL))
 
-	return avatarURL, nil
+	return avatarURL, avatarThumbURL, nil
+}
+
+func buildThumbnail(src []byte) ([]byte, error) {
+	img, _, err := image.Decode(bytes.NewReader(src))
+	if err != nil {
+		return nil, err
+	}
+
+	const thumbSize = 96
+	dst := image.NewRGBA(image.Rect(0, 0, thumbSize, thumbSize))
+	draw.CatmullRom.Scale(dst, dst.Bounds(), img, img.Bounds(), draw.Over, nil)
+
+	var out bytes.Buffer
+	if err = jpeg.Encode(&out, dst, &jpeg.Options{Quality: 82}); err != nil {
+		return nil, err
+	}
+	return out.Bytes(), nil
 }

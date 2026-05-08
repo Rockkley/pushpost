@@ -20,6 +20,16 @@ type PostRepositoryInterface interface {
 	RemoveVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
 }
 
+type CommentRepositoryInterface interface {
+	CreateComment(ctx context.Context, comment *entity.Comment) error
+	FindCommentByID(ctx context.Context, commentID uuid.UUID) (*entity.Comment, error)
+	UpdateComment(ctx context.Context, comment *entity.Comment) error
+	GetCommentsByPostID(ctx context.Context, postID uuid.UUID, limit int, after time.Time, afterID uuid.UUID) ([]*entity.Comment, error)
+	SetCommentVote(ctx context.Context, commentID, userID uuid.UUID, value int) (*entity.Comment, error)
+	RemoveCommentVote(ctx context.Context, commentID, userID uuid.UUID) (*entity.Comment, error)
+	DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error
+}
+
 type FeedRepository interface {
 	InsertBatch(ctx context.Context, postID uuid.UUID, userIDs []uuid.UUID, insertedAt time.Time) error
 	GetFeed(ctx context.Context, userID uuid.UUID, limit int, before time.Time, beforeID uuid.UUID) ([]*entity.Post, error)

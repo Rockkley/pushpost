@@ -15,6 +15,7 @@ type OutboxWriterInterface interface {
 }
 
 type Tx interface {
+	Comments() repository.CommentRepositoryInterface
 	Posts() repository.PostRepositoryInterface
 	Outbox() OutboxWriterInterface
 }
@@ -22,16 +23,24 @@ type Tx interface {
 type UnitOfWorkInterface interface {
 	Do(ctx context.Context, fn func(Tx) error) error
 	Reader() repository.PostRepositoryInterface
+	CommentReader() repository.CommentRepositoryInterface
 }
 
 type FriendshipClient interface {
 	GetFriendIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
+
+type CommentsResponse struct {
+	Comments   []*entity.Comment
+	NextCursor string
+}
+
 type FeedResponse struct {
 	Posts      []*entity.Post
 	NextCursor string
 	TopCursor  string
 }
+
 type PostUseCaseInterface interface {
 	CreatePost(ctx context.Context, authorID uuid.UUID, content string) (*entity.Post, error)
 	UpdatePost(ctx context.Context, postID, authorID uuid.UUID, content string) (*entity.Post, error)
@@ -44,6 +53,16 @@ type PostUseCaseInterface interface {
 	LikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
 	DislikePost(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
 	RemovePostVote(ctx context.Context, postID, userID uuid.UUID) (*entity.Post, error)
+}
+
+type CommentUseCaseInterface interface {
+	CreateComment(ctx context.Context, postID, authorID uuid.UUID, parentID *uuid.UUID, content string) (*entity.Comment, error)
+	GetPostComments(ctx context.Context, postID uuid.UUID, limit int, cursor string) (CommentsResponse, error)
+	UpdateComment(ctx context.Context, commentID, authorID uuid.UUID, content string) (*entity.Comment, error)
+	UpvoteComment(ctx context.Context, commentID, userID uuid.UUID) (*entity.Comment, error)
+	DownvoteComment(ctx context.Context, commentID, userID uuid.UUID) (*entity.Comment, error)
+	RemoveCommentVote(ctx context.Context, commentID, userID uuid.UUID) (*entity.Comment, error)
+	DeleteComment(ctx context.Context, commentID, authorID uuid.UUID) error
 }
 
 type Cursor struct {

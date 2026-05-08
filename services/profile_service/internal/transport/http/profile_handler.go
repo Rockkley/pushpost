@@ -47,7 +47,26 @@ func (h *ProfileHandler) GetByUsername(w http.ResponseWriter, r *http.Request) e
 		return commonapperr.Service("failed to get profile", err)
 	}
 
-	return httperror.WriteJSON(w, http.StatusOK, profile)
+	resp := map[string]interface{}{
+		"user_id":          profile.UserID,
+		"username":         profile.Username,
+		"display_name":     profile.DisplayName,
+		"first_name":       profile.FirstName,
+		"last_name":        profile.LastName,
+		"city":             profile.City,
+		"country":          profile.Country,
+		"birth_date":       profile.BirthDate,
+		"avatar_url":       profile.AvatarURL,
+		"avatar_thumb_url": profile.AvatarThumbURL,
+		"bio":              profile.Bio,
+		"telegram_link":    profile.TelegramLink,
+		"is_private":       profile.IsPrivate,
+		"created_at":       profile.CreatedAt,
+		"updated_at":       profile.UpdatedAt,
+	}
+
+	return httperror.WriteJSON(w, http.StatusOK, resp)
+
 }
 
 func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error {
@@ -195,6 +214,7 @@ func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) er
 	}
 
 	file, header, err := r.FormFile("avatar")
+
 	if err != nil {
 		return commonapperr.Validation(
 			commonapperr.CodeFieldRequired,
@@ -202,16 +222,21 @@ func (h *ProfileHandler) UploadAvatar(w http.ResponseWriter, r *http.Request) er
 			"avatar field is required",
 		)
 	}
+
 	defer file.Close()
 
 	contentType := header.Header.Get("Content-Type")
 
-	avatarURL, err := h.uc.UploadAvatar(r.Context(), userID, file, header.Size, contentType)
+	avatarURL, avatarThumbURL, err := h.uc.UploadAvatar(r.Context(), userID, file, header.Size, contentType)
+
 	if err != nil {
 		return err
 	}
 
-	return httperror.WriteJSON(w, http.StatusOK, map[string]string{"avatar_url": avatarURL})
+	return httperror.WriteJSON(w, http.StatusOK, map[string]string{
+		"avatar_url":       avatarURL,
+		"avatar_thumb_url": avatarThumbURL,
+	})
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────

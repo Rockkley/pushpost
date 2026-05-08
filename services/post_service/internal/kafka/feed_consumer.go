@@ -17,12 +17,13 @@ import (
 )
 
 type FeedConsumer struct {
-	reader     *kafka.Reader
-	friendship domain.FriendshipClient
-	feedRepo   repository.FeedRepository
-	postRepo   repository.PostRepositoryInterface
-	notifier   realtime.Notifier
-	log        *slog.Logger
+	reader       *kafka.Reader
+	friendship   domain.FriendshipClient
+	feedRepo     repository.FeedRepository
+	postRepo     repository.PostRepositoryInterface
+	commentsRepo repository.CommentRepositoryInterface
+	notifier     realtime.Notifier
+	log          *slog.Logger
 }
 
 func NewFeedConsumer(
@@ -32,6 +33,7 @@ func NewFeedConsumer(
 	friendship domain.FriendshipClient,
 	feedRepo repository.FeedRepository,
 	postRepo repository.PostRepositoryInterface,
+	commentsRepo repository.CommentRepositoryInterface,
 	notifier realtime.Notifier,
 	log *slog.Logger,
 ) *FeedConsumer {
@@ -44,12 +46,13 @@ func NewFeedConsumer(
 		CommitInterval: time.Second,
 	})
 	return &FeedConsumer{
-		reader:     reader,
-		friendship: friendship,
-		feedRepo:   feedRepo,
-		postRepo:   postRepo,
-		notifier:   notifier,
-		log:        log.With("component", "feed_consumer"),
+		reader:       reader,
+		friendship:   friendship,
+		feedRepo:     feedRepo,
+		postRepo:     postRepo,
+		commentsRepo: commentsRepo,
+		notifier:     notifier,
+		log:          log.With("component", "feed_consumer"),
 	}
 }
 

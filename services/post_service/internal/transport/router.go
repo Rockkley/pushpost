@@ -13,7 +13,7 @@ import (
 	myHTTP "github.com/rockkley/pushpost/services/post_service/internal/transport/http"
 )
 
-func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedSSEHandler) *chi.Mux {
+func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, ch *myHTTP.CommentHandler, sseHandler *myHTTP.FeedSSEHandler) *chi.Mux {
 	r := chi.NewRouter()
 
 	r.Use(chimiddleware.RequestID)
@@ -37,6 +37,13 @@ func NewRouter(log *slog.Logger, h *myHTTP.PostHandler, sseHandler *myHTTP.FeedS
 			r.Get("/feed", handlerhttp.MakeHandler(h.GetFeed))
 			r.Get("/feed/subscribe", sseHandler.Subscribe) // SSE - не MakeHandler, управляет ответом сам
 			r.Get("/by-user/{userID}", handlerhttp.MakeHandler(h.GetUserPosts))
+			r.Get("/{postID}/comments", handlerhttp.MakeHandler(ch.GetPostComments))
+			r.Post("/{postID}/comments", handlerhttp.MakeHandler(ch.CreateComment))
+			r.Patch("/comments/{commentID}", handlerhttp.MakeHandler(ch.UpdateComment))
+			r.Delete("/comments/{commentID}", handlerhttp.MakeHandler(ch.DeleteComment))
+			r.Put("/comments/{commentID}/upvote", handlerhttp.MakeHandler(ch.UpvoteComment))
+			r.Put("/comments/{commentID}/downvote", handlerhttp.MakeHandler(ch.DownvoteComment))
+			r.Delete("/comments/{commentID}/vote", handlerhttp.MakeHandler(ch.RemoveCommentVote))
 			r.Get("/{postID}", handlerhttp.MakeHandler(h.GetPostByID))
 			r.Patch("/{postID}", handlerhttp.MakeHandler(h.UpdatePost))
 			r.Delete("/{postID}", handlerhttp.MakeHandler(h.DeletePost))

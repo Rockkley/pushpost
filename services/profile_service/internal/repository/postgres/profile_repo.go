@@ -41,7 +41,7 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 	username = strings.ToLower(strings.TrimSpace(username))
 
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, bio, telegram_link,
+		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  LOWER(username) = $1
@@ -52,7 +52,7 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 
 func (r *ProfileRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*entity.Profile, error) {
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, bio, telegram_link,
+		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  user_id = $1
@@ -109,14 +109,15 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 	return nil
 }
 
-func (r *ProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+func (r *ProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string, avatarThumbURL string) error {
 	query := `
 		UPDATE profiles
-		SET    avatar_url = $2
+		SET    avatar_url = $2,
+		SET  avatar_thumb_url = $3
 		WHERE  user_id = $1
 		  AND  deleted_at IS NULL`
 
-	res, err := r.exec.ExecContext(ctx, query, userID, avatarURL)
+	res, err := r.exec.ExecContext(ctx, query, userID, avatarURL, avatarThumbURL)
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "update avatar")
 	}
@@ -144,6 +145,7 @@ func (r *ProfileRepository) scanProfile(row *sql.Row) (*entity.Profile, error) {
 		&p.Country,
 		&p.BirthDate,
 		&p.AvatarURL,
+		&p.AvatarThumbURL,
 		&p.Bio,
 		&p.TelegramLink,
 		&p.IsPrivate,
@@ -163,13 +165,11 @@ func (r *ProfileRepository) scanProfile(row *sql.Row) (*entity.Profile, error) {
 	return &p, nil
 }
 
-func (r *ProfileRepository) Search(
-	ctx context.Context,
-	filter *dto.SearchProfilesQuery,
-) ([]*entity.Profile, error) {
+func (r *ProfileRepository) Search(ctx context.Context, filter *dto.SearchProfilesQuery) ([]*entity.Profile, error) {
 	if filter == nil {
 		filter = &dto.SearchProfilesQuery{}
 	}
+
 	filter.NormalizePagination()
 
 	conditions := []string{"deleted_at IS NULL"}
@@ -220,6 +220,7 @@ func (r *ProfileRepository) Search(
 	}
 
 	country := strings.TrimSpace(filter.Country)
+
 	if country != "" {
 		conditions = append(conditions, "LOWER(country) LIKE LOWER($"+strconv.Itoa(idx)+")")
 		args = append(args, "%"+country+"%")
@@ -234,7 +235,7 @@ func (r *ProfileRepository) Search(
 	}
 
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, bio, telegram_link,
+		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  ` + strings.Join(conditions, " AND ") + `
@@ -245,12 +246,15 @@ func (r *ProfileRepository) Search(
 	args = append(args, filter.Limit, filter.Offset)
 
 	rows, err := r.exec.QueryContext(ctx, query, args...)
+
 	if err != nil {
 		return nil, commonapperr.MapPostgresError(err, "search profiles")
 	}
+
 	defer rows.Close()
 
 	var profiles []*entity.Profile
+
 	for rows.Next() {
 		var p entity.Profile
 		if err = rows.Scan(
@@ -263,6 +267,7 @@ func (r *ProfileRepository) Search(
 			&p.Country,
 			&p.BirthDate,
 			&p.AvatarURL,
+			&p.AvatarThumbURL,
 			&p.Bio,
 			&p.TelegramLink,
 			&p.IsPrivate,
@@ -272,6 +277,7 @@ func (r *ProfileRepository) Search(
 		); err != nil {
 			return nil, commonapperr.MapPostgresError(err, "scan profile")
 		}
+
 		profiles = append(profiles, &p)
 	}
 

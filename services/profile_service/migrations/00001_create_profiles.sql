@@ -2,22 +2,23 @@
 -- +goose StatementBegin
 CREATE TABLE profiles
 (
-    user_id       UUID PRIMARY KEY,
-    username      VARCHAR(30)  NOT NULL,
-    display_name  VARCHAR(60),
-    first_name    VARCHAR(60),
-    last_name     VARCHAR(60),
-    city          VARCHAR(120),
-    country       VARCHAR(120),
-    birth_date    DATE,
-    avatar_url    TEXT,
-    bio           VARCHAR(500),
-    telegram_link VARCHAR(255),
-    is_private    BOOLEAN      NOT NULL DEFAULT FALSE,
-    version       BIGINT       NOT NULL DEFAULT 1,
-    created_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMP    NOT NULL DEFAULT NOW(),
-    deleted_at    TIMESTAMP,
+    user_id          UUID PRIMARY KEY,
+    username         VARCHAR(30) NOT NULL,
+    display_name     VARCHAR(60),
+    first_name       VARCHAR(60),
+    last_name        VARCHAR(60),
+    city             VARCHAR(120),
+    country          VARCHAR(120),
+    birth_date       DATE,
+    avatar_url       TEXT,
+    avatar_thumb_url TEXT,
+    bio              VARCHAR(500),
+    telegram_link    VARCHAR(255),
+    is_private       BOOLEAN     NOT NULL DEFAULT FALSE,
+    version          BIGINT      NOT NULL DEFAULT 1,
+    created_at       TIMESTAMP   NOT NULL DEFAULT NOW(),
+    updated_at       TIMESTAMP   NOT NULL DEFAULT NOW(),
+    deleted_at       TIMESTAMP,
 
     CONSTRAINT profiles_username_length CHECK (char_length(username) BETWEEN 3 AND 30),
     CONSTRAINT profiles_display_name_length CHECK (display_name IS NULL OR char_length(display_name) BETWEEN 1 AND 60),
@@ -36,7 +37,8 @@ CREATE INDEX idx_profiles_city_lower ON profiles (LOWER(city)) WHERE deleted_at 
 CREATE INDEX idx_profiles_country_lower ON profiles (LOWER(country)) WHERE deleted_at IS NULL;
 
 CREATE OR REPLACE FUNCTION update_profiles_updated_at_column()
-    RETURNS TRIGGER AS $$
+    RETURNS TRIGGER AS
+$$
 BEGIN
     NEW.updated_at = NOW();
     NEW.version = OLD.version + 1;
@@ -45,7 +47,8 @@ END;
 $$ LANGUAGE plpgsql;
 
 CREATE TRIGGER update_profiles_updated_at
-    BEFORE UPDATE ON profiles
+    BEFORE UPDATE
+    ON profiles
     FOR EACH ROW
 EXECUTE FUNCTION update_profiles_updated_at_column();
 

@@ -14,6 +14,8 @@ const (
 	TypeFriendRequestAccepted NotificationType = "friend_request.accepted"
 	TypeFriendRequestRejected NotificationType = "friend_request.rejected"
 	TypeMessageReceived       NotificationType = "message.received"
+	TypeCommentReplied        NotificationType = "comment.replied"
+	TypeCommentMentioned      NotificationType = "comment.mentioned"
 )
 
 const (

@@ -13,6 +13,7 @@ import (
 
 	"github.com/joho/godotenv"
 	goredis "github.com/redis/go-redis/v9"
+	"github.com/rockkley/pushpost/clients/profile_grpc"
 	"github.com/rockkley/pushpost/services/common_service/database"
 	"github.com/rockkley/pushpost/services/common_service/logger"
 	"github.com/rockkley/pushpost/services/notification_service/internal/config"
@@ -29,14 +30,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -49,10 +53,12 @@ func main() {
 		MaxOpenConns: cfg.Database.MaxOpenConns,
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
+
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer db.Close()
 
 	rdb := goredis.NewClient(&goredis.Options{
@@ -60,10 +66,12 @@ func main() {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
+
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to redis", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer rdb.Close()
 
 	notifRepo := repopg.NewNotificationRepository(db)
@@ -74,7 +82,9 @@ func main() {
 	binder := usecase.NewTelegramBinder(linkStore, telegramRepo, appLog)
 
 	deliverers := []delivery.Deliverer{inapp.NewDeliverer(rdb)}
+
 	var bot *tg.Bot
+
 	if cfg.Telegram.Enabled() {
 		bot, err = tg.NewBot(cfg.Telegram.BotToken, binder, appLog)
 		if err != nil {
@@ -86,11 +96,18 @@ func main() {
 
 	uc := usecase.NewNotificationUseCase(notifRepo, prefRepo, binder, deliverers, appLog)
 
-	handlers := notifkafka.NewHandlers(uc, appLog)
+	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
+
+	if err != nil {
+		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
+		os.Exit(1)
+	}
+
+	defer profileClient.Close()
+
+	handlers := notifkafka.NewHandlers(uc, profileClient, appLog)
 	router := notifkafka.NewRouter(handlers, appLog)
 
-	// notifkafka.ConsumedTopics — единственный источник правды для списка топиков.
-	// Не дублируем список здесь, чтобы не допустить рассинхронизации с router.
 	consumer := notifkafka.NewConsumer(
 		cfg.Kafka.Brokers(),
 		cfg.Kafka.GroupID,

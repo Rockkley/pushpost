@@ -21,3 +21,7 @@ func NotPostAuthor() apperror.AppError {
 func CannotVoteOwnPost() apperror.AppError {
 	return apperror.Validation(CodeCannotVoteOwnPost, "like", "you cannot like your own post")
 }
+
+func CommentNotFound() apperror.AppError {
+	return apperror.NotFound(CodeCommentNotFound, "comment not found")
+}

@@ -14,6 +14,11 @@ type Config struct {
 	Redis    RedisConfig
 	Kafka    KafkaConfig
 	Telegram TelegramConfig
+	Services ServicesConfig
+}
+
+type ServicesConfig struct {
+	ProfileServiceGRPC string `env:"PROFILE_SERVICE_GRPC_ADDR" env-default:"profile-service:50056"`
 }
 
 type HTTPConfig struct {

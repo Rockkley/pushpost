@@ -11,12 +11,14 @@ import (
 )
 
 type uowTx struct {
-	posts  repository.PostRepositoryInterface
-	outbox domain.OutboxWriterInterface
+	posts    repository.PostRepositoryInterface
+	comments repository.CommentRepositoryInterface
+	outbox   domain.OutboxWriterInterface
 }
 
-func (t *uowTx) Posts() repository.PostRepositoryInterface { return t.posts }
-func (t *uowTx) Outbox() domain.OutboxWriterInterface      { return t.outbox }
+func (t *uowTx) Posts() repository.PostRepositoryInterface       { return t.posts }
+func (t *uowTx) Comments() repository.CommentRepositoryInterface { return t.comments }
+func (t *uowTx) Outbox() domain.OutboxWriterInterface            { return t.outbox }
 
 type UnitOfWork struct{ db *sql.DB }
 
@@ -25,6 +27,9 @@ func NewUnitOfWork(db *sql.DB) *UnitOfWork { return &UnitOfWork{db: db} }
 func (u *UnitOfWork) Reader() repository.PostRepositoryInterface {
 	return NewPostRepository(u.db)
 }
+func (u *UnitOfWork) CommentReader() repository.CommentRepositoryInterface {
+	return NewCommentRepository(u.db)
+}
 
 func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	tx, err := u.db.BeginTx(ctx, nil)
@@ -32,11 +37,13 @@ func (u *UnitOfWork) Do(ctx context.Context, fn func(domain.Tx) error) error {
 	if err != nil {
 		return fmt.Errorf("begin tx: %w", err)
 	}
+
 	defer tx.Rollback()
 
 	if err = fn(&uowTx{
-		posts:  NewPostRepository(tx),
-		outbox: outboxpg.NewWriterRepository(tx),
+		posts:    NewPostRepository(tx),
+		comments: NewCommentRepository(tx),
+		outbox:   outboxpg.NewWriterRepository(tx),
 	}); err != nil {
 		return err
 	}

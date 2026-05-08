@@ -15,6 +15,6 @@ type ProfileUseCaseInterface interface {
 	GetByUsername(ctx context.Context, username string) (*entity.Profile, error)
 	CreateProfile(ctx context.Context, profile *entity.Profile) error
 	UpdateProfile(ctx context.Context, profile *entity.Profile) error
-	UploadAvatar(ctx context.Context, userID uuid.UUID, r io.Reader, size int64, contentType string) (string, error)
+	UploadAvatar(ctx context.Context, userID uuid.UUID, r io.Reader, size int64, contentType string) (string, string, error)
 	Search(ctx context.Context, filter *dto.SearchProfilesQuery) ([]*entity.Profile, error)
 }
