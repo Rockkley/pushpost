@@ -87,5 +87,6 @@ func (c *Config) validate() error {
 	if len(c.Kafka.Brokers()) == 0 {
 		return fmt.Errorf("kafka brokers list is empty")
 	}
+
 	return nil
 }

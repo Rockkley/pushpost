@@ -45,6 +45,7 @@ func NewFeedConsumer(
 		MaxBytes:       10e6,
 		CommitInterval: time.Second,
 	})
+
 	return &FeedConsumer{
 		reader:       reader,
 		friendship:   friendship,
@@ -63,6 +64,7 @@ func (c *FeedConsumer) Run(ctx context.Context) error {
 			if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 				return nil
 			}
+
 			return fmt.Errorf("fetch message: %w", err)
 		}
 
@@ -100,6 +102,7 @@ func (c *FeedConsumer) handle(ctx context.Context, msg kafka.Message) error {
 			slog.String("topic", msg.Topic),
 			slog.String("value", string(msg.Value)),
 		)
+
 		return nil // битое сообщение - пропускаем без ретрая
 	}
 
@@ -127,25 +130,31 @@ func (c *FeedConsumer) handlePostCreated(ctx context.Context, payload json.RawMe
 	var p events.PostCreatedEvent
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid post.created payload, skipping")
+
 		return nil
 	}
 
 	postID, err := uuid.Parse(p.PostID)
+
 	if err != nil {
 		return nil
 	}
+
 	authorID, err := uuid.Parse(p.AuthorID)
+
 	if err != nil {
 		return nil
 	}
 
 	insertedAt, err := time.Parse(time.RFC3339Nano, p.CreatedAt)
+
 	if err != nil {
 		c.log.Warn("invalid created_at in post.created, using now", slog.String("value", p.CreatedAt))
 		insertedAt = time.Now().UTC()
 	}
 
 	friendIDs, err := c.friendship.GetFriendIDs(ctx, authorID)
+
 	if err != nil {
 		return fmt.Errorf("get friend ids for author %s: %w", authorID, err)
 	}
@@ -176,6 +185,7 @@ func (c *FeedConsumer) handlePostUpdated(ctx context.Context, payload json.RawMe
 
 	if err := json.Unmarshal(payload, &p); err != nil {
 		c.log.Warn("invalid post.updated payload, skipping")
+
 		return nil
 	}
 

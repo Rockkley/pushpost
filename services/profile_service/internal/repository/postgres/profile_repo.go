@@ -118,17 +118,21 @@ func (r *ProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, 
 		  AND  deleted_at IS NULL`
 
 	res, err := r.exec.ExecContext(ctx, query, userID, avatarURL, avatarThumbURL)
+
 	if err != nil {
 		return commonapperr.MapPostgresError(err, "update avatar")
 	}
 
 	affected, err := res.RowsAffected()
+
 	if err != nil {
 		return fmt.Errorf("update avatar rows affected: %w", err)
 	}
+
 	if affected == 0 {
 		return domain.ErrProfileNotFound
 	}
+
 	return nil
 }
 
