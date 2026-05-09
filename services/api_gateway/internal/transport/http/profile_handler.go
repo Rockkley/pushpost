@@ -35,6 +35,7 @@ type ProfileResponse struct {
 	AvatarURL        string    `json:"avatar_url,omitempty"`
 	Bio              string    `json:"bio,omitempty"`
 	TelegramLink     string    `json:"telegram_link,omitempty"`
+	GithubLink       string    `json:"github_link,omitempty"`
 	IsPrivate        bool      `json:"is_private"`
 	FriendshipStatus string    `json:"friendship_status,omitempty"`
 }

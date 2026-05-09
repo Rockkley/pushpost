@@ -18,6 +18,7 @@ type Profile struct {
 	AvatarThumbURL *string
 	Bio            *string
 	TelegramLink   *string
+	GithubLink     *string
 	IsPrivate      bool
 	CreatedAt      time.Time
 	UpdatedAt      time.Time

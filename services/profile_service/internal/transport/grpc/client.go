@@ -26,6 +26,7 @@ type ProfileResponse struct {
 	AvatarURL    string
 	Bio          string
 	TelegramLink string
+	GithubLink   string
 	IsPrivate    bool
 }
 
@@ -48,12 +49,15 @@ func (c *Client) GetByUsername(ctx context.Context, username string) (ProfileRes
 	resp, err := c.grpc.GetProfileByUsername(ctx, &profilev1.GetProfileByUsernameRequest{
 		Username: username,
 	})
+
 	if err != nil {
 		if st, ok := status.FromError(err); ok && st.Code() == codes.NotFound {
 			return ProfileResponse{}, ErrNotFound
 		}
+
 		return ProfileResponse{}, fmt.Errorf("profile grpc: %w", err)
 	}
+
 	return ProfileResponse{
 		UserID:       resp.UserId,
 		Username:     resp.Username,
@@ -65,6 +69,7 @@ func (c *Client) GetByUsername(ctx context.Context, username string) (ProfileRes
 		AvatarURL:    resp.AvatarUrl,
 		Bio:          resp.Bio,
 		TelegramLink: resp.TelegramLink,
+		GithubLink:   resp.GithubLink,
 		IsPrivate:    resp.IsPrivate,
 	}, nil
 }

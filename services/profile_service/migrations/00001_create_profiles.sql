@@ -14,6 +14,7 @@ CREATE TABLE profiles
     avatar_thumb_url TEXT,
     bio              VARCHAR(500),
     telegram_link    VARCHAR(255),
+    github_link      VARCHAR(255),
     is_private       BOOLEAN     NOT NULL DEFAULT FALSE,
     version          BIGINT      NOT NULL DEFAULT 1,
     created_at       TIMESTAMP   NOT NULL DEFAULT NOW(),

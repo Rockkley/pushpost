@@ -77,7 +77,8 @@ type GetProfileByUsernameResponse struct {
 	AvatarUrl     string                 `protobuf:"bytes,8,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	Bio           string                 `protobuf:"bytes,9,opt,name=bio,proto3" json:"bio,omitempty"`
 	TelegramLink  string                 `protobuf:"bytes,10,opt,name=telegram_link,json=telegramLink,proto3" json:"telegram_link,omitempty"`
-	IsPrivate     bool                   `protobuf:"varint,11,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
+	GithubLink    string                 `protobuf:"bytes,11,opt,name=github_link,json=githubLink,proto3" json:"github_link,omitempty"`
+	IsPrivate     bool                   `protobuf:"varint,12,opt,name=is_private,json=isPrivate,proto3" json:"is_private,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -182,6 +183,13 @@ func (x *GetProfileByUsernameResponse) GetTelegramLink() string {
 	return ""
 }
 
+func (x *GetProfileByUsernameResponse) GetGithubLink() string {
+	if x != nil {
+		return x.GithubLink
+	}
+	return ""
+}
+
 func (x *GetProfileByUsernameResponse) GetIsPrivate() bool {
 	if x != nil {
 		return x.IsPrivate
@@ -196,7 +204,7 @@ const file_internal_transport_grpc_profile_proto_rawDesc = "" +
 	"%internal/transport/grpc/profile.proto\x12\n" +
 	"profile.v1\"9\n" +
 	"\x1bGetProfileByUsernameRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername\"\xe5\x02\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"\x86\x03\n" +
 	"\x1cGetProfileByUsernameResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1d\n" +
@@ -212,9 +220,11 @@ const file_internal_transport_grpc_profile_proto_rawDesc = "" +
 	"avatar_url\x18\b \x01(\tR\tavatarUrl\x12\x10\n" +
 	"\x03bio\x18\t \x01(\tR\x03bio\x12#\n" +
 	"\rtelegram_link\x18\n" +
-	" \x01(\tR\ftelegramLink\x12\x1d\n" +
+	" \x01(\tR\ftelegramLink\x12\x1f\n" +
+	"\vgithub_link\x18\v \x01(\tR\n" +
+	"githubLink\x12\x1d\n" +
 	"\n" +
-	"is_private\x18\v \x01(\bR\tisPrivate2{\n" +
+	"is_private\x18\f \x01(\bR\tisPrivate2{\n" +
 	"\x0eProfileService\x12i\n" +
 	"\x14GetProfileByUsername\x12'.profile.v1.GetProfileByUsernameRequest\x1a(.profile.v1.GetProfileByUsernameResponseBPZNgithub.com/rockkley/pushpost/services/profile_service/gen/profile/v1;profilev1b\x06proto3"
 

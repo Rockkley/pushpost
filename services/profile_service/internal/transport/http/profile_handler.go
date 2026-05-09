@@ -60,6 +60,7 @@ func (h *ProfileHandler) GetByUsername(w http.ResponseWriter, r *http.Request) e
 		"avatar_thumb_url": profile.AvatarThumbURL,
 		"bio":              profile.Bio,
 		"telegram_link":    profile.TelegramLink,
+		"github_link":      profile.GithubLink,
 		"is_private":       profile.IsPrivate,
 		"created_at":       profile.CreatedAt,
 		"updated_at":       profile.UpdatedAt,
@@ -85,6 +86,7 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 		AvatarURL    string `json:"avatar_url"`
 		Bio          string `json:"bio"`
 		TelegramLink string `json:"telegram_link"`
+		GithubLink   string `json:"github_link"`
 		IsPrivate    bool   `json:"is_private"`
 	}
 
@@ -108,6 +110,7 @@ func (h *ProfileHandler) UpdateMe(w http.ResponseWriter, r *http.Request) error 
 		AvatarURL:    normalizeOptional(body.AvatarURL),
 		Bio:          normalizeOptional(body.Bio),
 		TelegramLink: normalizeOptional(body.TelegramLink),
+		GithubLink:   normalizeOptional(body.GithubLink),
 		IsPrivate:    body.IsPrivate,
 	}
 
@@ -287,23 +290,29 @@ func validateProfileFields(profile *entity.Profile) error {
 	if profile.DisplayName != nil && len(*profile.DisplayName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "display_name", "display_name is too long")
 	}
+
 	if profile.FirstName != nil && len(*profile.FirstName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "first_name", "first_name is too long")
 	}
+
 	if profile.LastName != nil && len(*profile.LastName) > 60 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "last_name", "last_name is too long")
 	}
 	if profile.City != nil && len(*profile.City) > 120 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "city", "city is too long")
 	}
+
 	if profile.Country != nil && len(*profile.Country) > 120 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "country", "country is too long")
 	}
+
 	if profile.Bio != nil && len(*profile.Bio) > 500 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "bio", "bio is too long")
 	}
+
 	if profile.TelegramLink != nil && len(*profile.TelegramLink) > 255 {
 		return commonapperr.Validation(commonapperr.CodeFieldTooLong, "telegram_link", "telegram_link is too long")
 	}
+
 	return nil
 }

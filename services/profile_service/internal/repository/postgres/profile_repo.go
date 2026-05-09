@@ -41,7 +41,7 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 	username = strings.ToLower(strings.TrimSpace(username))
 
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
+		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link, github_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  LOWER(username) = $1
@@ -52,7 +52,7 @@ func (r *ProfileRepository) FindByUsername(ctx context.Context, username string)
 
 func (r *ProfileRepository) FindByUserID(ctx context.Context, userID uuid.UUID) (*entity.Profile, error) {
 	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
+		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link, github_link,
 		       is_private, created_at, updated_at, deleted_at
 		FROM   profiles
 		WHERE  user_id = $1
@@ -73,7 +73,8 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 		       avatar_url = $8,
 		       bio = $9,
 		       telegram_link = $10,
-		       is_private = $11
+		       github_link = $11,
+		       is_private = $12
 
 		WHERE  user_id = $1
 		  AND  deleted_at IS NULL`
@@ -90,6 +91,7 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 		profile.AvatarURL,
 		profile.Bio,
 		profile.TelegramLink,
+		profile.GithubLink,
 		profile.IsPrivate,
 	)
 
@@ -106,14 +108,14 @@ func (r *ProfileRepository) Update(ctx context.Context, profile *entity.Profile)
 	if affected == 0 {
 		return domain.ErrProfileNotFound
 	}
+
 	return nil
 }
 
 func (r *ProfileRepository) UpdateAvatar(ctx context.Context, userID uuid.UUID, avatarURL string, avatarThumbURL string) error {
 	query := `
 		UPDATE profiles
-		SET    avatar_url = $2,
-		SET  avatar_thumb_url = $3
+		SET    avatar_url = $2, avatar_thumb_url = $3
 		WHERE  user_id = $1
 		  AND  deleted_at IS NULL`
 
@@ -152,6 +154,7 @@ func (r *ProfileRepository) scanProfile(row *sql.Row) (*entity.Profile, error) {
 		&p.AvatarThumbURL,
 		&p.Bio,
 		&p.TelegramLink,
+		&p.GithubLink,
 		&p.IsPrivate,
 		&p.CreatedAt,
 		&p.UpdatedAt,
@@ -238,14 +241,17 @@ func (r *ProfileRepository) Search(ctx context.Context, filter *dto.SearchProfil
 		idx++
 	}
 
-	query := `
-		SELECT user_id, username, display_name, first_name, last_name, city, country, birth_date, avatar_url, avatar_thumb_url, bio, telegram_link,
-		       is_private, created_at, updated_at, deleted_at
-		FROM   profiles
-		WHERE  ` + strings.Join(conditions, " AND ") + `
-		ORDER BY created_at DESC
-		LIMIT $` + strconv.Itoa(idx) + `
-		OFFSET $` + strconv.Itoa(idx+1)
+	where := strings.Join(conditions, " AND ")
+
+	query := fmt.Sprintf(`
+    SELECT user_id, username, display_name, first_name, last_name, city, country,
+           birth_date, avatar_url, avatar_thumb_url, bio, telegram_link, github_link,
+           is_private, created_at, updated_at, deleted_at
+    FROM profiles
+    WHERE %s
+    ORDER BY created_at DESC
+    LIMIT $%d OFFSET $%d
+`, where, idx, idx+1)
 
 	args = append(args, filter.Limit, filter.Offset)
 
@@ -274,6 +280,7 @@ func (r *ProfileRepository) Search(ctx context.Context, filter *dto.SearchProfil
 			&p.AvatarThumbURL,
 			&p.Bio,
 			&p.TelegramLink,
+			&p.GithubLink,
 			&p.IsPrivate,
 			&p.CreatedAt,
 			&p.UpdatedAt,

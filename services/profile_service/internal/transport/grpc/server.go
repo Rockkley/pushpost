@@ -58,6 +58,7 @@ func (s *ProfileServer) GetProfileByUsername(
 		AvatarUrl:    derefString(profile.AvatarURL),
 		Bio:          derefString(profile.Bio),
 		TelegramLink: derefString(profile.TelegramLink),
+		GithubLink:   derefString(profile.GithubLink),
 		IsPrivate:    profile.IsPrivate,
 	}, nil
 }
