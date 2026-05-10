@@ -87,14 +87,16 @@ func main() {
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
+
 	defer cancel()
 
 	go outboxWorker.Run(ctx)
 
 	serverErr := make(chan error, 1)
+
 	go func() {
 		appLog.Info("user service started", slog.String("port", cfg.HTTP.Port))
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()
@@ -115,7 +117,7 @@ func main() {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
 	defer shutdownCancel()
 
-	if err := srv.Shutdown(shutdownCtx); err != nil {
+	if err = srv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}

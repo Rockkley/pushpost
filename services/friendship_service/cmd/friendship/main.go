@@ -30,14 +30,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -51,6 +54,7 @@ func main() {
 		MaxOpenConns: cfg.Database.MaxOpenConns,
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
+
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
@@ -77,6 +81,7 @@ func main() {
 	)
 
 	workerCtx, workerCancel := context.WithCancel(context.Background())
+
 	defer workerCancel()
 
 	go outboxWorker.Run(workerCtx)
@@ -100,6 +105,7 @@ func main() {
 	)
 
 	grpcLis, err := net.Listen("tcp", fmt.Sprintf(":%s", cfg.GRPC.Port))
+
 	if err != nil {
 		appLog.Error("failed to listen gRPC port", slog.Any("error", err))
 		os.Exit(1)
@@ -140,6 +146,7 @@ func main() {
 	appLog.Info("gRPC server stopped")
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+
 	defer shutdownCancel()
 
 	if err = httpSrv.Shutdown(shutdownCtx); err != nil {

@@ -63,6 +63,7 @@ func (h *PrettyHandler) Handle(_ context.Context, r slog.Record) error {
 
 	if len(fields) > 0 {
 		b, err = json.MarshalIndent(fields, "", "  ")
+
 		if err != nil {
 			return err
 		}

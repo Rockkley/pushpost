@@ -57,8 +57,9 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 			return apperr.FriendRequestExists()
 		}
 
+		cooldownTimer := time.Now().Add(-cooldownDuration)
 		onCooldown, err := tx.Requests().HasRecentRejected(
-			ctx, senderID, receiverID, time.Now().Add(-cooldownDuration),
+			ctx, senderID, receiverID, cooldownTimer,
 		)
 
 		if err != nil {
@@ -66,7 +67,7 @@ func (uc *FriendshipUseCase) SendRequest(ctx context.Context, senderID, receiver
 		}
 
 		if onCooldown {
-			return apperr.RequestCooldown()
+			return apperr.RequestCooldown(cooldownTimer)
 		}
 
 		req := entity.FriendshipRequest{

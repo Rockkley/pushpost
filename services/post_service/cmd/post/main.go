@@ -30,14 +30,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -51,10 +54,12 @@ func main() {
 		MaxOpenConns: cfg.Database.MaxOpenConns,
 		MaxIdleConns: cfg.Database.MaxIdleConns,
 	})
+
 	if err != nil {
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer db.Close()
 
 	// ── Redis ─────────────────────────────────────────────────────────────────
@@ -63,20 +68,24 @@ func main() {
 		Password: cfg.Redis.Password,
 		DB:       cfg.Redis.DB,
 	})
+
 	if err = rdb.Ping(context.Background()).Err(); err != nil {
 		appLog.Error("failed to connect to redis", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer rdb.Close()
 
 	// ── Friendship gRPC client ────────────────────────────────────────────────
 	friendshipClient, err := friendship.NewGRPCClient(cfg.Friendship.GRPCAddr, cfg.Friendship.UseTLS)
+
 	if err != nil {
 		appLog.Error("failed to create friendship grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer func() {
-		if err := friendshipClient.Close(); err != nil {
+		if err = friendshipClient.Close(); err != nil {
 			appLog.Error("failed to close friendship grpc client", slog.Any("error", err))
 		}
 	}()
@@ -154,12 +163,14 @@ func main() {
 			appLog.Error("feed consumer stopped with error", slog.Any("error", err))
 		}
 	}()
+
 	defer feedConsumer.Close()
 
 	serverErr := make(chan error, 1)
+
 	go func() {
 		appLog.Info("post service started", slog.String("port", cfg.HTTP.Port))
-		if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
 	}()
@@ -178,10 +189,13 @@ func main() {
 	cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+
 	defer shutdownCancel()
+
 	if err = srv.Shutdown(shutdownCtx); err != nil {
 		appLog.Error("graceful shutdown failed", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	appLog.Info("post service stopped")
 }

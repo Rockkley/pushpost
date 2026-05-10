@@ -32,6 +32,7 @@ func main() {
 	}
 
 	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
+
 	slog.SetDefault(appLog)
 
 	a, err := app.New(cfg, appLog)
@@ -42,6 +43,7 @@ func main() {
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+
 	defer stop()
 
 	if err = a.Run(ctx); err != nil {

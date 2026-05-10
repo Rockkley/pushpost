@@ -25,14 +25,17 @@ import (
 
 func main() {
 	envFile := os.Getenv("ENV_FILE")
+
 	if envFile == "" {
 		envFile = ".env"
 	}
+
 	if err := godotenv.Load(envFile); err != nil {
 		stdlog.Printf("no env file %q found, using runtime environment variables", envFile)
 	}
 
 	cfg, err := config.Load()
+
 	if err != nil {
 		stdlog.Fatal("failed to load config:", err)
 	}
@@ -40,58 +43,64 @@ func main() {
 	appLog := logger.SetupLogger(os.Getenv("APP_ENV"))
 	slog.SetDefault(appLog)
 
-	// Единый transport с правильно настроенным пулом соединений.
-	// Все прокси разделяют один transport — это обеспечивает корректное
-	// переиспользование TCP-соединений и предотвращает исчерпание дескрипторов.
 	sharedTransport := proxy.NewTransport(cfg.Services.Timeout)
 
 	authProxy, err := proxy.New(cfg.Services.AuthService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create auth proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	userProxy, err := proxy.NewStrippingAuth(cfg.Services.UserService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create user proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	friendshipProxy, err := proxy.NewStrippingAuth(cfg.Services.FriendshipService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create friendship proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	messageProxy, err := proxy.NewStrippingAuth(cfg.Services.MessageService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create message proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	postProxy, err := proxy.NewStrippingAuth(cfg.Services.PostService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create post proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	profileProxy, err := proxy.NewStrippingAuth(cfg.Services.ProfileService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create profile proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	notificationProxy, err := proxy.NewStrippingAuth(cfg.Services.NotificationService, sharedTransport)
+
 	if err != nil {
 		appLog.Error("failed to create notification proxy", slog.Any("error", err))
 		os.Exit(1)
 	}
 
 	profileClient, err := profile_grpc.NewClient(cfg.Services.ProfileServiceGRPC)
+
 	if err != nil {
 		appLog.Error("failed to create profile grpc client", slog.Any("error", err))
 		os.Exit(1)
 	}
+
 	defer func() {
 		if closeErr := profileClient.Close(); closeErr != nil {
 			appLog.Error("failed to close profile grpc connection", slog.Any("error", closeErr))
@@ -102,6 +111,7 @@ func main() {
 		cfg.Services.FriendshipService,
 		&http.Client{Timeout: cfg.Services.Timeout},
 	)
+
 	if err != nil {
 		appLog.Error("failed to create friendship client", slog.Any("error", err))
 		os.Exit(1)
@@ -136,6 +146,7 @@ func main() {
 	}
 
 	serverErr := make(chan error, 1)
+
 	go func() {
 		appLog.Info("api gateway started", slog.String("port", cfg.HTTP.Port))
 		if err = srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {

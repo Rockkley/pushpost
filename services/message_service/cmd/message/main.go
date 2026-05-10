@@ -52,7 +52,6 @@ func main() {
 	})
 
 	if err != nil {
-
 		appLog.Error("failed to connect to database", slog.Any("error", err))
 		os.Exit(1)
 	}
@@ -80,6 +79,7 @@ func main() {
 	)
 
 	ctx, cancel := context.WithCancel(context.Background())
+
 	defer cancel()
 
 	go outboxWorker.Run(ctx)
@@ -115,6 +115,7 @@ func main() {
 	cancel()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), cfg.HTTP.ShutdownTimeout)
+
 	defer shutdownCancel()
 
 	if err = srv.Shutdown(shutdownCtx); err != nil {

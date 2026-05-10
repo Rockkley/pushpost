@@ -1,7 +1,9 @@
 package apperror
 
 import (
+	"fmt"
 	"github.com/rockkley/pushpost/services/common_service/apperror"
+	"time"
 )
 
 func AlreadyFriends() apperror.AppError {
@@ -28,8 +30,8 @@ func FriendRequestNotPending() apperror.AppError {
 	return apperror.BadRequest(CodeFriendRequestNotPending, "friend request is no longer pending")
 }
 
-func RequestCooldown() apperror.AppError {
-	return apperror.BadRequest(CodeRequestCooldown, "you must wait before sending another request to this user")
+func RequestCooldown(time time.Time) apperror.AppError {
+	return apperror.BadRequest(CodeRequestCooldown, fmt.Sprintf("you must wait %v before sending another request to this user", time))
 }
 
 func CannotBlockSelf() apperror.AppError {

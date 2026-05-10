@@ -103,7 +103,7 @@ func main() {
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
 	select {
-	case err := <-serverErr:
+	case err = <-serverErr:
 		appLog.Error("server failed to start", slog.Any("error", err))
 		os.Exit(1)
 	case <-quit:

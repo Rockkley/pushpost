@@ -112,7 +112,12 @@ func (uc *CommentUseCase) GetPostComments(ctx context.Context, postID uuid.UUID,
 
 	if len(comments) == limit {
 		last := comments[len(comments)-1]
-		token, _ := cursor.Encode(uc.cursorSecret, last.CreatedAt, last.ID)
+		token, err := cursor.Encode(uc.cursorSecret, last.CreatedAt, last.ID)
+
+		if err != nil {
+			return domain.CommentsResponse{}, commonapperr.Internal(commonapperr.CodeInternalError, err)
+		}
+
 		resp.NextCursor = token
 	}
 

@@ -23,5 +23,6 @@ message GetProfileByUsernameResponse {
   string avatar_url    = 8;
   string bio           = 9;
   string telegram_link = 10;
-  bool   is_private    = 11;
+  string github_link   = 11;
+  bool   is_private    = 12;
 }
